@@ -1,0 +1,63 @@
+generator client {
+  provider = "prisma-client-js"
+}
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")   // pooled (pgBouncer) — app runtime
+  directUrl = env("DIRECT_URL")     // direct — migrations
+}
+
+enum Role {
+  EMPLOYEE
+  MANAGER
+}
+enum Status {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  ON_HOLD
+}
+
+model User {
+  id          String     @id @default(cuid())
+  email       String     @unique
+  name        String
+  designation String?
+  role        Role       @default(EMPLOYEE)
+  createdAt   DateTime   @default(now())
+  activities  Activity[]
+  locks       PeriodLock[]
+}
+
+model Activity {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  employeeName String
+  designation  String
+  date         DateTime @db.Date
+  activity     String
+  description  String?
+  assignedBy   String
+  status       Status
+  deadline     DateTime? @db.Date
+  timeTaken    Decimal  @db.Decimal(5, 2)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([userId])
+  @@index([date])
+}
+
+model PeriodLock {
+  id         String   @id @default(cuid())
+  startDate  DateTime @db.Date
+  endDate    DateTime @db.Date
+  label      String?
+  reason     String?
+  lockedById String
+  lockedBy   User     @relation(fields: [lockedById], references: [id])
+  lockedAt   DateTime @default(now())
+
+  @@index([startDate, endDate])
+}
