@@ -10,21 +10,28 @@ export async function lockPeriod(input: LockInput) {
   const parsed = lockSchema.safeParse(input);
   if (!parsed.success) return { ok: false as const, error: parsed.error.issues[0].message };
   const v = parsed.data;
-  await prisma.periodLock.create({
-    data: {
-      startDate: parseISODate(v.startDate),
-      endDate: parseISODate(v.endDate),
-      label: v.label || null,
-      reason: v.reason || null,
-      lockedById: mgr.id,
-    },
-  });
-  revalidatePath("/manager");
-  return { ok: true as const };
+
+  try {
+    await prisma.periodLock.create({
+      data: {
+        startDate: parseISODate(v.startDate),
+        endDate: parseISODate(v.endDate),
+        label: v.label || null,
+        reason: v.reason || null,
+        lockedById: mgr.id,
+      },
+    });
+    revalidatePath("/manager");
+    return { ok: true as const };
+  } catch (e) {
+    return { ok: false as const, error: (e as Error).message };
+  }
 }
 
 // yyyyMm like "2026-10"
 export async function lockMonth(yyyyMm: string, reason?: string) {
+  if (!/^\d{4}-\d{2}$/.test(yyyyMm)) return { ok: false as const, error: "Invalid month" };
+
   const [y, m] = yyyyMm.split("-").map(Number);
   const start = `${yyyyMm}-01`;
   const end = new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10); // last day of month
@@ -36,7 +43,12 @@ export async function lockMonth(yyyyMm: string, reason?: string) {
 
 export async function removeLock(id: string) {
   await requireManager();
-  await prisma.periodLock.delete({ where: { id } });
-  revalidatePath("/manager");
-  return { ok: true as const };
+
+  try {
+    await prisma.periodLock.delete({ where: { id } });
+    revalidatePath("/manager");
+    return { ok: true as const };
+  } catch (e) {
+    return { ok: false as const, error: (e as Error).message };
+  }
 }
