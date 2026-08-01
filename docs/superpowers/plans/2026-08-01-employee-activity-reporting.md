@@ -98,8 +98,11 @@ Add to `package.json` scripts: `"test": "vitest run"`.
 
 - [ ] **Step 5: Create `.env.example`**
 
+# Supabase → Project Settings → Database → Connection string.
+# DATABASE_URL = "Transaction" pooler (port 6543) for the app; DIRECT_URL = "Direct" (port 5432) for migrations.
 ```
-DATABASE_URL="postgresql://postgres:postgres@localhost:5432/ears?schema=public"
+DATABASE_URL="postgresql://postgres.<ref>:<pw>@aws-0-<region>.pooler.supabase.com:6543/postgres?pgbouncer=true"
+DIRECT_URL="postgresql://postgres.<ref>:<pw>@aws-0-<region>.pooler.supabase.com:5432/postgres"
 AUTH_SECRET="generate-with-npx-auth-secret"
 AUTH_GOOGLE_ID=""
 AUTH_GOOGLE_SECRET=""
@@ -111,7 +114,7 @@ TEMP_LOGIN_PASSWORD="changeme"
 TEMP_LOGIN_ROLE="MANAGER"
 ```
 
-Copy to `.env` and fill `DATABASE_URL` + run `npx auth secret` to populate `AUTH_SECRET`.
+Copy to `.env`, fill `DATABASE_URL`/`DIRECT_URL` from Supabase, and run `npx auth secret` to populate `AUTH_SECRET`. (Supabase's own automatic daily backups also satisfy the backup NFR — no extra ops work.)
 
 - [ ] **Step 6: Verify dev server boots**
 
@@ -139,7 +142,11 @@ git add -A && git commit -m "chore: scaffold Next.js app with Tailwind, shadcn, 
 
 ```prisma
 generator client { provider = "prisma-client-js" }
-datasource db { provider = "postgresql"; url = env("DATABASE_URL") }
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")   // pooled (pgBouncer) — app runtime
+  directUrl = env("DIRECT_URL")     // direct — migrations
+}
 
 enum Role   { EMPLOYEE MANAGER }
 enum Status { PENDING IN_PROGRESS COMPLETED ON_HOLD }
@@ -1223,7 +1230,7 @@ git add -A && git commit -m "feat: manager dashboard with stats, filters, delete
 
 - [ ] **Step 1:** In Google Cloud Console (done by product owner): create OAuth 2.0 Client (Web), add redirect `https://<domain>/api/auth/callback/google` and `http://localhost:3000/api/auth/callback/google`. Put ID/secret in `.env`.
 - [ ] **Step 2:** Sign in with a real `@gteceducation.com` Google account → lands by role. Sign in with a non-domain account → rejected.
-- [ ] **Step 3:** For production: set `ALLOW_TEMP_LOGIN=false` (temp provider disappears), set `MANAGER_EMAILS`, ensure managed Postgres daily backups (or a `pg_dump` cron) are enabled — the "daily automatic database backup" NFR is an ops setting, not app code.
+- [ ] **Step 3:** For production: set `ALLOW_TEMP_LOGIN=false` (temp provider disappears), set `MANAGER_EMAILS`. Supabase provides automatic daily backups out of the box — the "daily automatic database backup" NFR is satisfied by the platform, no app code.
 - [ ] **Step 4: Commit** any doc/env.example changes.
 
 ```bash
