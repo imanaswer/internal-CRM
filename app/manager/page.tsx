@@ -116,7 +116,7 @@ export default async function ManagerPage({
           </Card>
         </div>
 
-        <ActivityFiltersBar />
+        <ActivityFiltersBar key={qs.toString() || "empty"} />
 
         <ManagerActivityTable rows={rows} />
 
