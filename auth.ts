@@ -78,5 +78,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       (session.user as any).designation = token.designation ?? null;
       return session;
     },
+    authorized({ auth }) {
+      return !!auth?.user;
+    },
   },
 });
