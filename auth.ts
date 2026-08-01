@@ -20,6 +20,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             name: "Temp Login",
             credentials: { username: {}, password: {} },
             authorize: (c) => {
+              if (!c?.username || !c?.password || !process.env.TEMP_LOGIN_USER || !process.env.TEMP_LOGIN_PASSWORD) return null;
               if (
                 c?.username === process.env.TEMP_LOGIN_USER &&
                 c?.password === process.env.TEMP_LOGIN_PASSWORD
@@ -49,7 +50,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           update: { name: profile!.name ?? email, role },
           create: { email, name: profile!.name ?? email, role },
         });
-        (user as any).roleResolved = role;
         return true;
       }
       return false;
