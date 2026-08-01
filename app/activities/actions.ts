@@ -36,6 +36,7 @@ export async function createActivity(input: ActivityInput) {
     });
     revalidatePath("/dashboard");
     revalidatePath("/activities");
+    revalidatePath("/manager");
     return { ok: true as const };
   } catch (e) {
     return { ok: false as const, error: (e as Error).message };
@@ -47,11 +48,11 @@ export async function updateActivity(id: string, input: ActivityInput) {
   const parsed = activitySchema.safeParse(input);
   if (!parsed.success) return { ok: false as const, error: parsed.error.issues[0].message };
   const v = parsed.data;
-  const existing = await prisma.activity.findUnique({ where: { id } });
-  if (!existing) return { ok: false as const, error: "Not found" };
-  if (user.role !== "MANAGER" && existing.userId !== user.id)
-    return { ok: false as const, error: "Forbidden" };
   try {
+    const existing = await prisma.activity.findUnique({ where: { id } });
+    if (!existing) return { ok: false as const, error: "Not found" };
+    if (user.role !== "MANAGER" && existing.userId !== user.id)
+      return { ok: false as const, error: "Forbidden" };
     await assertWritable(user, existing.date.toISOString().slice(0, 10)); // current period
     await assertWritable(user, v.date); // target period
     await prisma.activity.update({
@@ -66,6 +67,7 @@ export async function updateActivity(id: string, input: ActivityInput) {
         timeTaken: v.timeTaken,
       },
     });
+    revalidatePath("/dashboard");
     revalidatePath("/activities");
     revalidatePath("/manager");
     return { ok: true as const };
@@ -76,13 +78,14 @@ export async function updateActivity(id: string, input: ActivityInput) {
 
 export async function deleteActivity(id: string) {
   const user = await requireUser();
-  const existing = await prisma.activity.findUnique({ where: { id } });
-  if (!existing) return { ok: false as const, error: "Not found" };
-  if (user.role !== "MANAGER" && existing.userId !== user.id)
-    return { ok: false as const, error: "Forbidden" };
   try {
+    const existing = await prisma.activity.findUnique({ where: { id } });
+    if (!existing) return { ok: false as const, error: "Not found" };
+    if (user.role !== "MANAGER" && existing.userId !== user.id)
+      return { ok: false as const, error: "Forbidden" };
     await assertWritable(user, existing.date.toISOString().slice(0, 10));
     await prisma.activity.delete({ where: { id } });
+    revalidatePath("/dashboard");
     revalidatePath("/activities");
     revalidatePath("/manager");
     return { ok: true as const };
