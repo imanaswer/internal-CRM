@@ -89,6 +89,7 @@ PeriodLock
   startDate  DateTime          // inclusive, date-only semantics
   endDate    DateTime          // inclusive
   label      String?           // e.g. "October 2026" — display only
+  reason     String?           // optional note on why it was locked (traceability)
   lockedById String
   lockedBy   User     @relation(...)
   lockedAt   DateTime @default(now())
