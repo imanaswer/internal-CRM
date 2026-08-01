@@ -83,7 +83,24 @@ Activity
 
 Role   = EMPLOYEE | MANAGER
 Status = PENDING | IN_PROGRESS | COMPLETED | ON_HOLD
+
+PeriodLock
+  id         String   @id @default(cuid())
+  startDate  DateTime          // inclusive, date-only semantics
+  endDate    DateTime          // inclusive
+  label      String?           // e.g. "October 2026" — display only
+  lockedById String
+  lockedBy   User     @relation(...)
+  lockedAt   DateTime @default(now())
 ```
+
+**Reporting period lock.** A manager locks a date range (a whole month, or an
+arbitrary selected period) after reviewing/exporting it. An activity is "in a locked
+period" if its `date` falls within any PeriodLock range. Employees cannot **create,
+edit, or delete** activities whose `date` is in a locked period; managers bypass the
+lock entirely. This preserves report integrity after finalization while letting
+employees who submit weekly or end-of-month backfill any *unlocked* past date. A
+manager can remove a lock (delete the PeriodLock row) if it was applied in error.
 
 **Snapshotting** `employeeName` and `designation` onto each Activity keeps historical
 filters/exports accurate even if a user later changes their name or designation.
@@ -103,26 +120,34 @@ DB-level guard: `CHECK (timeTaken > 0)` (cheapest place to enforce rule; app val
 | Activity date not in the future | zod, compared in `Asia/Kolkata` |
 | Deadline ≥ activity date (when deadline set) | zod cross-field |
 
-## 5. Date/time rules — one shared helper
+## 5. Date/time rules
 
-`lib/dates.ts` owns **all** "today"/"same-day" logic in `Asia/Kolkata`. Four call sites:
-1. **Edit window** — an activity is editable only while `today() === localDate(activity.date)`.
-   "Same day" is relative to the activity's `date` field (not `createdAt`).
-2. **No future dates** — `localDate(input) <= today()`.
-3. **"Employees Submitted Today"** dashboard stat — count of distinct users with an
+### Timezone helper — one shared source
+`lib/dates.ts` owns **all** "today" logic in `Asia/Kolkata`. Three call sites:
+1. **No future dates** — `localDate(input) <= today()` (validation, §4).
+2. **"Employees Submitted Today"** dashboard stat — count of distinct users with an
    activity whose `date` is `today()`.
-4. **Export filename** — `Daily_Report_YYYY-MM-DD.xlsx` uses `today()`.
+3. **Export filename** — `Daily_Report_YYYY-MM-DD.xlsx` uses `today()`.
 
-Comparing in UTC would misjudge the edit window for morning-IST edits, so all four
-must route through this helper.
+Comparing in UTC would misjudge the day boundary for morning-IST use, so all three
+route through this helper.
+
+### Edit/write rule (no time window)
+Employees may create and edit their **own** activities for **any past date**; future
+dates are rejected (§4). There is **no** same-day or 24-hour restriction. The only
+write restriction is the **reporting period lock** (§3): if the activity's `date` is in
+a locked period, employees cannot create, edit, or delete it. Managers are never
+restricted. Lock membership is a pure date-range containment check, also via `lib/dates.ts`.
 
 ## 6. Features
 
 ### Employee
 - **Dashboard:** Add Activity (button/form), Today's Entries (list), Recent Activities (list).
 - **Add/Create activity:** form with fields from §3; name+designation auto-filled from profile.
+  Any past date allowed; blocked if the chosen date is in a locked period (§3).
 - **Activity History:** all own activities; each row shows Date, Activity, Status, Time Taken, Deadline.
-- **Edit own activity:** only within the same-day window (§5.1). Otherwise read-only.
+  Rows in a locked period are read-only (edit/delete disabled) with a "locked" indicator.
+- **Edit/delete own activity:** allowed for any past date **unless** its period is locked (§5).
 
 ### Manager
 - **Dashboard stats:** Total Activities, Completed Activities, Pending Activities,
@@ -132,9 +157,12 @@ must route through this helper.
 - **Filters (combinable):** Date, Date Range, Employee, Designation, Status, Assigned By.
 - **Delete:** permanent delete of any record (Manager only).
 - **Excel export:** exports the **currently filtered** result set.
+- **Lock/unlock reporting period:** lock a month or an arbitrary date range after
+  reviewing/exporting it (§3); view existing locks; remove a lock applied in error.
 
 ### Access control
-- Employees: create/view/edit-own only. Cannot view others, delete, or export.
+- Employees: create/view/edit/delete **own** only, subject to the period lock (§5).
+  Cannot view others, export, or manage locks.
 - Managers: full read across all data, delete, export. (PRD: no visibility restrictions.)
 
 ## 7. Query & Export share one path
@@ -170,7 +198,10 @@ Console, with the redirect URI registered — Claude cannot create these. Theref
 
 ## 11. Testing
 
-- Unit: `lib/dates.ts` (edit window, future-date, today boundary across IST midnight),
-  validation schema (cross-field deadline/date, time>0), filter/query builder.
+- Unit: `lib/dates.ts` (future-date check, today boundary across IST midnight,
+  period-lock range containment), validation schema (cross-field deadline/date, time>0),
+  filter/query builder.
+- Period lock: employee create/edit/delete rejected when `date` in a locked range,
+  allowed just outside it; manager bypasses the lock.
 - The domain-enforcement `signIn` callback: allow verified `@gteceducation.com`,
   reject other domains, reject unverified.
