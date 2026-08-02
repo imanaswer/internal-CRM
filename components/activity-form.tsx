@@ -57,8 +57,15 @@ export function ActivityForm({ action, maxDate, existing, onSuccess }: Props) {
     };
 
     setPending(true);
-    const result = await action(input);
-    setPending(false);
+    let result: Awaited<ReturnType<typeof action>>;
+    try {
+      result = await action(input);
+    } catch {
+      toast.error("Request failed \u2014 your session may have expired. Refresh the page.");
+      return;
+    } finally {
+      setPending(false);
+    }
 
     if (!result.ok) {
       toast.error(result.error);

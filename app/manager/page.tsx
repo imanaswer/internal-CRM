@@ -1,9 +1,8 @@
 import { redirect } from "next/navigation";
 import { Download } from "lucide-react";
-import type { Status } from "@prisma/client";
 import { getCurrentUser } from "@/lib/session";
 import { prisma } from "@/lib/db";
-import { buildActivityWhere, type ActivityFilters } from "@/lib/activity-query";
+import { buildActivityWhere, parseActivityFilters } from "@/lib/activity-query";
 import { dateToISO, parseISODate, todayISO } from "@/lib/dates";
 import { Nav } from "@/components/nav";
 import { ActivityFilters as ActivityFiltersBar } from "@/components/activity-filters";
@@ -11,8 +10,6 @@ import { ManagerActivityTable } from "@/components/manager-activity-table";
 import { LockPanel } from "@/components/lock-panel";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-
-const STATUSES: Status[] = ["PENDING", "IN_PROGRESS", "COMPLETED", "ON_HOLD"];
 
 export default async function ManagerPage({
   searchParams,
@@ -23,17 +20,7 @@ export default async function ManagerPage({
   if (!user) redirect("/signin");
   if (user.role !== "MANAGER") redirect("/dashboard");
 
-  const sp = await searchParams;
-  const statusParam = sp.status as string | undefined;
-  const filters: ActivityFilters = {
-    employeeName: sp.employeeName as string | undefined,
-    designation: sp.designation as string | undefined,
-    status: statusParam && STATUSES.includes(statusParam as Status) ? (statusParam as Status) : undefined,
-    assignedBy: sp.assignedBy as string | undefined,
-    dateFrom: sp.dateFrom as string | undefined,
-    dateTo: sp.dateTo as string | undefined,
-    search: sp.search as string | undefined,
-  };
+  const filters = parseActivityFilters(await searchParams);
 
   const [total, completed, pending, submittedToday, activities, locks] = await Promise.all([
     prisma.activity.count({ where: buildActivityWhere(filters) }),

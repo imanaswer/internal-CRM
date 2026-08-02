@@ -1,4 +1,4 @@
-const ALLOWED = process.env.ALLOWED_DOMAIN ?? "gteceducation.com";
+const ALLOWED = (process.env.ALLOWED_DOMAIN ?? "gteceducation.com").toLowerCase();
 
 export function isAllowedGoogleProfile(p: {
   email?: string | null;

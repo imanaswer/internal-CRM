@@ -62,7 +62,11 @@ export default async function SignInPage({
               role="alert"
               className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive"
             >
-              Invalid username or password.
+              {error === "AccessDenied"
+                ? "Access is restricted to gteceducation.com Google accounts."
+                : error === "1"
+                  ? "Invalid username or password."
+                  : "Sign-in failed. Please try again."}
             </p>
           )}
 

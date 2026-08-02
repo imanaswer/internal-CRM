@@ -31,7 +31,13 @@ export function ManagerActivityTable({ rows }: { rows: Row[] }) {
   const router = useRouter();
 
   async function handleDelete(id: string) {
-    const result = await deleteActivity(id);
+    let result: Awaited<ReturnType<typeof deleteActivity>>;
+    try {
+      result = await deleteActivity(id);
+    } catch {
+      toast.error("Request failed \u2014 your session may have expired. Refresh the page.");
+      return;
+    }
     if (!result.ok) {
       toast.error(result.error);
       return;

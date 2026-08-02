@@ -1,8 +1,7 @@
 import ExcelJS from "exceljs";
-import type { Status } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { requireManager } from "@/lib/session";
-import { buildActivityWhere, type ActivityFilters } from "@/lib/activity-query";
+import { buildActivityWhere, parseActivityFilters } from "@/lib/activity-query";
 import { dateToISO, todayISO } from "@/lib/dates";
 
 // exceljs uses Node Buffer APIs, not available in the edge runtime.
@@ -19,18 +18,7 @@ export async function GET(req: Request) {
     const forbidden = e instanceof Error && e.message === "FORBIDDEN";
     return new Response(forbidden ? "Forbidden" : "Unauthorized", { status: forbidden ? 403 : 401 });
   }
-  const p = new URL(req.url).searchParams;
-  const statusParam = p.get("status");
-  const STATUSES: Status[] = ["PENDING", "IN_PROGRESS", "COMPLETED", "ON_HOLD"];
-  const filters: ActivityFilters = {
-    employeeName: p.get("employeeName") ?? undefined,
-    designation: p.get("designation") ?? undefined,
-    status: statusParam && STATUSES.includes(statusParam as Status) ? (statusParam as Status) : undefined,
-    assignedBy: p.get("assignedBy") ?? undefined,
-    dateFrom: p.get("dateFrom") ?? undefined,
-    dateTo: p.get("dateTo") ?? undefined,
-    search: p.get("search") ?? undefined,
-  };
+  const filters = parseActivityFilters(new URL(req.url).searchParams);
   const rows = await prisma.activity.findMany({
     where: buildActivityWhere(filters),
     orderBy: { date: "desc" },

@@ -1,5 +1,6 @@
 "use server";
 import { revalidatePath } from "next/cache";
+import { safeErrorMessage } from "@/lib/errors";
 import { prisma } from "@/lib/db";
 import { requireUser } from "@/lib/session";
 import { activitySchema, type ActivityInput } from "@/lib/validation";
@@ -39,7 +40,7 @@ export async function createActivity(input: ActivityInput) {
     revalidatePath("/manager");
     return { ok: true as const };
   } catch (e) {
-    return { ok: false as const, error: (e as Error).message };
+    return { ok: false as const, error: safeErrorMessage(e) };
   }
 }
 
@@ -72,7 +73,7 @@ export async function updateActivity(id: string, input: ActivityInput) {
     revalidatePath("/manager");
     return { ok: true as const };
   } catch (e) {
-    return { ok: false as const, error: (e as Error).message };
+    return { ok: false as const, error: safeErrorMessage(e) };
   }
 }
 
@@ -90,6 +91,6 @@ export async function deleteActivity(id: string) {
     revalidatePath("/manager");
     return { ok: true as const };
   } catch (e) {
-    return { ok: false as const, error: (e as Error).message };
+    return { ok: false as const, error: safeErrorMessage(e) };
   }
 }

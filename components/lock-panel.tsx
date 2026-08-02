@@ -33,8 +33,15 @@ export function LockPanel({ locks }: { locks: PeriodLockRow[] }) {
     const reason = String(form.get("reason") ?? "").trim();
     if (!month) return;
     setPending(true);
-    const result = await lockMonth(month, reason || undefined);
-    setPending(false);
+    let result: Awaited<ReturnType<typeof lockMonth>>;
+    try {
+      result = await lockMonth(month, reason || undefined);
+    } catch {
+      toast.error("Request failed \u2014 your session may have expired. Refresh the page.");
+      return;
+    } finally {
+      setPending(false);
+    }
     if (!result.ok) {
       toast.error(result.error);
       return;
@@ -54,13 +61,20 @@ export function LockPanel({ locks }: { locks: PeriodLockRow[] }) {
     const reason = String(form.get("reason") ?? "").trim();
     if (!startDate || !endDate) return;
     setPending(true);
-    const result = await lockPeriod({
-      startDate,
-      endDate,
-      label: label || undefined,
-      reason: reason || undefined,
-    });
-    setPending(false);
+    let result: Awaited<ReturnType<typeof lockPeriod>>;
+    try {
+      result = await lockPeriod({
+        startDate,
+        endDate,
+        label: label || undefined,
+        reason: reason || undefined,
+      });
+    } catch {
+      toast.error("Request failed \u2014 your session may have expired. Refresh the page.");
+      return;
+    } finally {
+      setPending(false);
+    }
     if (!result.ok) {
       toast.error(result.error);
       return;
@@ -71,7 +85,13 @@ export function LockPanel({ locks }: { locks: PeriodLockRow[] }) {
   }
 
   async function handleRemove(id: string) {
-    const result = await removeLock(id);
+    let result: Awaited<ReturnType<typeof removeLock>>;
+    try {
+      result = await removeLock(id);
+    } catch {
+      toast.error("Request failed \u2014 your session may have expired. Refresh the page.");
+      return;
+    }
     if (!result.ok) {
       toast.error(result.error);
       return;

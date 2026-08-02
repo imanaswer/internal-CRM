@@ -1,5 +1,6 @@
 "use server";
 import { revalidatePath } from "next/cache";
+import { safeErrorMessage } from "@/lib/errors";
 import { prisma } from "@/lib/db";
 import { requireManager } from "@/lib/session";
 import { lockSchema, type LockInput } from "@/lib/validation";
@@ -24,7 +25,7 @@ export async function lockPeriod(input: LockInput) {
     revalidatePath("/manager");
     return { ok: true as const };
   } catch (e) {
-    return { ok: false as const, error: (e as Error).message };
+    return { ok: false as const, error: safeErrorMessage(e) };
   }
 }
 
@@ -49,6 +50,6 @@ export async function removeLock(id: string) {
     revalidatePath("/manager");
     return { ok: true as const };
   } catch (e) {
-    return { ok: false as const, error: (e as Error).message };
+    return { ok: false as const, error: safeErrorMessage(e) };
   }
 }

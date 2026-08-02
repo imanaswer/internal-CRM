@@ -10,6 +10,9 @@ const tempEnabled =
 export const { handlers, auth, signIn, signOut } = NextAuth({
   session: { strategy: "jwt" },
   pages: { signIn: "/signin" },
+  // Required when deployed behind a reverse proxy (any non-Vercel host);
+  // the app is only ever reached via the org's own trusted host.
+  trustHost: true,
   providers: [
     Google({
       authorization: { params: { hd: process.env.ALLOWED_DOMAIN, prompt: "select_account" } },
