@@ -23,16 +23,31 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             name: "Temp Login",
             credentials: { username: {}, password: {} },
             authorize: (c) => {
-              if (!c?.username || !c?.password || !process.env.TEMP_LOGIN_USER || !process.env.TEMP_LOGIN_PASSWORD) return null;
+              if (!c?.username || !c?.password) return null;
               if (
-                c?.username === process.env.TEMP_LOGIN_USER &&
-                c?.password === process.env.TEMP_LOGIN_PASSWORD
+                process.env.TEMP_LOGIN_USER &&
+                process.env.TEMP_LOGIN_PASSWORD &&
+                c.username === process.env.TEMP_LOGIN_USER &&
+                c.password === process.env.TEMP_LOGIN_PASSWORD
               ) {
                 return {
                   id: "temp",
                   email: "temp@local.dev",
                   name: "Temp User",
                   role: process.env.TEMP_LOGIN_ROLE ?? "MANAGER",
+                } as any;
+              }
+              if (
+                process.env.TEMP_STAFF_USER &&
+                process.env.TEMP_STAFF_PASSWORD &&
+                c.username === process.env.TEMP_STAFF_USER &&
+                c.password === process.env.TEMP_STAFF_PASSWORD
+              ) {
+                return {
+                  id: "temp-staff",
+                  email: "staff@local.dev",
+                  name: "Test Staff",
+                  role: "EMPLOYEE",
                 } as any;
               }
               return null;
@@ -44,16 +59,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   callbacks: {
     async signIn({ account, profile, user }) {
       if (account?.provider === "credentials") {
-        if (!tempEnabled) return false;
-        // Give the temp login a real User row so FK-backed writes
+        if (!tempEnabled || !user?.email) return false;
+        // Give each temp login a real User row so FK-backed writes
         // (activities, locks) work exactly as they do for Google users.
-        const role = (process.env.TEMP_LOGIN_ROLE === "EMPLOYEE" ? "EMPLOYEE" : "MANAGER") as
+        const role = ((user as any).role === "EMPLOYEE" ? "EMPLOYEE" : "MANAGER") as
           | "EMPLOYEE"
           | "MANAGER";
         await prisma.user.upsert({
-          where: { email: "temp@local.dev" },
+          where: { email: user.email },
           update: { role },
-          create: { email: "temp@local.dev", name: "Temp User", role },
+          create: { email: user.email, name: user.name ?? "Temp User", role },
         });
         return true;
       }
