@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
-type Lock = {
+type PeriodLockRow = {
   id: string;
   label: string | null;
   startDate: string;
@@ -20,13 +20,15 @@ type Lock = {
   lockedAt: string;
 };
 
-export function LockPanel({ locks }: { locks: Lock[] }) {
+export function LockPanel({ locks }: { locks: PeriodLockRow[] }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
 
   async function handleLockMonth(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const form = new FormData(e.currentTarget);
+    // e.currentTarget is nulled after the await — keep a real reference.
+    const formEl = e.currentTarget;
+    const form = new FormData(formEl);
     const month = String(form.get("month") ?? "");
     const reason = String(form.get("reason") ?? "").trim();
     if (!month) return;
@@ -38,13 +40,14 @@ export function LockPanel({ locks }: { locks: Lock[] }) {
       return;
     }
     toast.success("Month locked");
-    e.currentTarget.reset();
+    formEl.reset();
     router.refresh();
   }
 
   async function handleLockRange(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const form = new FormData(e.currentTarget);
+    const formEl = e.currentTarget;
+    const form = new FormData(formEl);
     const startDate = String(form.get("startDate") ?? "");
     const endDate = String(form.get("endDate") ?? "");
     const label = String(form.get("label") ?? "").trim();
@@ -63,7 +66,7 @@ export function LockPanel({ locks }: { locks: Lock[] }) {
       return;
     }
     toast.success("Period locked");
-    e.currentTarget.reset();
+    formEl.reset();
     router.refresh();
   }
 
