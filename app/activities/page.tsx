@@ -29,10 +29,15 @@ export default async function ActivitiesPage() {
   });
 
   return (
-    <div className="flex flex-col">
+    <div className="flex min-h-svh flex-col">
       <Nav />
-      <main className="flex flex-col gap-6 p-6">
-        <h1 className="text-xl font-semibold">My Activities</h1>
+      <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 sm:p-6">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">My Activities</h1>
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            Your full history. Entries in a locked reporting period are read-only.
+          </p>
+        </div>
         <ActivityHistory rows={rows} maxDate={todayISO()} />
       </main>
     </div>

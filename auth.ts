@@ -40,7 +40,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ],
   callbacks: {
     async signIn({ account, profile, user }) {
-      if (account?.provider === "credentials") return tempEnabled;
+      if (account?.provider === "credentials") {
+        if (!tempEnabled) return false;
+        // Give the temp login a real User row so FK-backed writes
+        // (activities, locks) work exactly as they do for Google users.
+        const role = (process.env.TEMP_LOGIN_ROLE === "EMPLOYEE" ? "EMPLOYEE" : "MANAGER") as
+          | "EMPLOYEE"
+          | "MANAGER";
+        await prisma.user.upsert({
+          where: { email: "temp@local.dev" },
+          update: { role },
+          create: { email: "temp@local.dev", name: "Temp User", role },
+        });
+        return true;
+      }
       if (account?.provider === "google") {
         if (!isAllowedGoogleProfile(profile as any)) return false;
         const email = profile!.email!;
@@ -56,11 +69,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
     async jwt({ token, user }) {
       if (user) {
-        if ((user as any).id === "temp") {
-          token.uid = "temp";
-          token.role = (user as any).role;
-          token.designation = null;
-        } else if (token.email) {
+        if (token.email) {
           const db = await prisma.user.findUnique({ where: { email: token.email } });
           if (db) {
             token.uid = db.id;

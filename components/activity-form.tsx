@@ -43,7 +43,9 @@ export function ActivityForm({ action, maxDate, existing, onSuccess }: Props) {
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const form = new FormData(e.currentTarget);
+    // e.currentTarget is nulled after the await — keep a real reference.
+    const formEl = e.currentTarget;
+    const form = new FormData(formEl);
     const input: ActivityInput = {
       date: String(form.get("date") ?? ""),
       activity: String(form.get("activity") ?? ""),
@@ -63,7 +65,7 @@ export function ActivityForm({ action, maxDate, existing, onSuccess }: Props) {
       return;
     }
     toast.success(existing ? "Activity updated" : "Activity added");
-    if (!existing) e.currentTarget.reset();
+    if (!existing) formEl.reset();
     router.refresh();
     onSuccess?.();
   }

@@ -40,19 +40,40 @@ export default async function SignInPage({
   const { error } = await searchParams;
 
   return (
-    <div className="flex flex-1 items-center justify-center p-4">
-      <Card className="w-full max-w-sm">
+    <div className="flex min-h-svh flex-col items-center justify-center gap-6 bg-background p-4">
+      <div className="flex flex-col items-center gap-3">
+        <span className="flex size-11 items-center justify-center rounded-xl bg-primary text-lg font-bold text-primary-foreground shadow-md shadow-primary/25">
+          G
+        </span>
+        <div className="text-center">
+          <h1 className="text-lg font-semibold tracking-tight">Activity Reporting</h1>
+          <p className="text-sm text-muted-foreground">G-TEC internal daily work reporting</p>
+        </div>
+      </div>
+
+      <Card className="w-full max-w-sm shadow-sm">
         <CardHeader>
           <CardTitle>Sign in</CardTitle>
-          <CardDescription>Employee Activity Reporting System</CardDescription>
+          <CardDescription>Use your gteceducation.com Google account.</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           {error && (
-            <p className="text-sm text-destructive">Invalid username or password.</p>
+            <p
+              role="alert"
+              className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive"
+            >
+              Invalid username or password.
+            </p>
           )}
 
           <form action={signInWithGoogle}>
             <Button type="submit" className="w-full">
+              <svg viewBox="0 0 24 24" className="size-4" aria-hidden>
+                <path
+                  fill="currentColor"
+                  d="M21.35 11.1H12v2.9h5.35c-.5 2.5-2.6 3.9-5.35 3.9a6 6 0 1 1 0-12c1.5 0 2.9.55 3.95 1.55l2.2-2.2A9 9 0 1 0 12 21c5.2 0 8.85-3.65 8.85-8.8 0-.4-.05-.75-.1-1.1Z"
+                />
+              </svg>
               Sign in with Google
             </Button>
           </form>

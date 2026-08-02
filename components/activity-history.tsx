@@ -5,8 +5,9 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { ActivityForm } from "@/components/activity-form";
 import { updateActivity, deleteActivity } from "@/app/activities/actions";
+import { Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge, LockedBadge } from "@/components/status-badge";
 import {
   Table,
   TableHeader,
@@ -49,42 +50,62 @@ export function ActivityHistory({ rows, maxDate }: { rows: Row[]; maxDate: strin
   }
 
   if (rows.length === 0) {
-    return <p className="text-sm text-muted-foreground">No activities yet.</p>;
+    return (
+      <div className="flex flex-col items-center gap-1 rounded-xl border bg-card py-12 text-center">
+        <p className="text-sm font-medium">No activities yet</p>
+        <p className="text-sm text-muted-foreground">Entries you add from the dashboard appear here.</p>
+      </div>
+    );
   }
 
   return (
     <>
+      <div className="overflow-x-auto rounded-xl border bg-card">
       <Table>
         <TableHeader>
           <TableRow>
             <TableHead>Date</TableHead>
             <TableHead>Activity</TableHead>
             <TableHead>Status</TableHead>
-            <TableHead>Time Taken</TableHead>
+            <TableHead className="text-right">Time (hrs)</TableHead>
             <TableHead>Deadline</TableHead>
-            <TableHead>Actions</TableHead>
+            <TableHead className="w-28 text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {rows.map((row) => (
-            <TableRow key={row.id}>
-              <TableCell>{row.date}</TableCell>
-              <TableCell>{row.activity}</TableCell>
-              <TableCell>
-                <Badge variant="secondary">{row.status.replace("_", " ")}</Badge>
+            <TableRow key={row.id} className={row.locked ? "bg-muted/40" : undefined}>
+              <TableCell className="text-muted-foreground tabular-nums">{row.date}</TableCell>
+              <TableCell className="max-w-72 truncate font-medium" title={row.description ?? row.activity}>
+                {row.activity}
               </TableCell>
-              <TableCell>{row.timeTaken}</TableCell>
-              <TableCell>{row.deadline ?? "—"}</TableCell>
               <TableCell>
+                <StatusBadge status={row.status} />
+              </TableCell>
+              <TableCell className="text-right tabular-nums">{row.timeTaken}</TableCell>
+              <TableCell className="text-muted-foreground">{row.deadline ?? "—"}</TableCell>
+              <TableCell className="text-right">
                 {row.locked ? (
-                  <Badge variant="outline">Locked</Badge>
+                  <LockedBadge />
                 ) : (
-                  <div className="flex gap-2">
-                    <Button size="sm" variant="outline" onClick={() => setEditing(row)}>
+                  <div className="flex justify-end gap-1">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      aria-label={`Edit ${row.activity}`}
+                      onClick={() => setEditing(row)}
+                    >
+                      <Pencil className="size-3.5" aria-hidden />
                       Edit
                     </Button>
-                    <Button size="sm" variant="destructive" onClick={() => handleDelete(row.id)}>
-                      Delete
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      aria-label={`Delete ${row.activity}`}
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => handleDelete(row.id)}
+                    >
+                      <Trash2 className="size-3.5" aria-hidden />
                     </Button>
                   </div>
                 )}
@@ -93,6 +114,7 @@ export function ActivityHistory({ rows, maxDate }: { rows: Row[]; maxDate: strin
           ))}
         </TableBody>
       </Table>
+      </div>
 
       <Dialog open={!!editing} onOpenChange={(open) => !open && setEditing(null)}>
         <DialogContent>

@@ -2,9 +2,10 @@
 
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { Trash2, SearchX } from "lucide-react";
 import { deleteActivity } from "@/app/activities/actions";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge, type ActivityStatus } from "@/components/status-badge";
 import {
   Table,
   TableHeader,
@@ -20,7 +21,7 @@ type Row = {
   employeeName: string;
   designation: string;
   activity: string;
-  status: "PENDING" | "IN_PROGRESS" | "COMPLETED" | "ON_HOLD";
+  status: ActivityStatus;
   assignedBy: string;
   timeTaken: number;
   deadline: string | null;
@@ -40,45 +41,63 @@ export function ManagerActivityTable({ rows }: { rows: Row[] }) {
   }
 
   if (rows.length === 0) {
-    return <p className="text-sm text-muted-foreground">No activities.</p>;
+    return (
+      <div className="flex flex-col items-center gap-2 rounded-xl border bg-card py-12 text-center">
+        <SearchX className="size-8 text-muted-foreground/50" aria-hidden />
+        <p className="text-sm font-medium">No activities match</p>
+        <p className="text-sm text-muted-foreground">Adjust or clear the filters to see more.</p>
+      </div>
+    );
   }
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Date</TableHead>
-          <TableHead>Employee</TableHead>
-          <TableHead>Designation</TableHead>
-          <TableHead>Activity</TableHead>
-          <TableHead>Status</TableHead>
-          <TableHead>Assigned By</TableHead>
-          <TableHead>Time Taken</TableHead>
-          <TableHead>Deadline</TableHead>
-          <TableHead>Actions</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {rows.map((row) => (
-          <TableRow key={row.id}>
-            <TableCell>{row.date ?? "—"}</TableCell>
-            <TableCell>{row.employeeName}</TableCell>
-            <TableCell>{row.designation}</TableCell>
-            <TableCell>{row.activity}</TableCell>
-            <TableCell>
-              <Badge variant="secondary">{row.status.replace("_", " ")}</Badge>
-            </TableCell>
-            <TableCell>{row.assignedBy}</TableCell>
-            <TableCell>{row.timeTaken}</TableCell>
-            <TableCell>{row.deadline ?? "—"}</TableCell>
-            <TableCell>
-              <Button size="sm" variant="destructive" onClick={() => handleDelete(row.id)}>
-                Delete
-              </Button>
-            </TableCell>
+    <div className="overflow-x-auto rounded-xl border bg-card">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Date</TableHead>
+            <TableHead>Employee</TableHead>
+            <TableHead>Designation</TableHead>
+            <TableHead>Activity</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>Assigned By</TableHead>
+            <TableHead className="text-right">Time (hrs)</TableHead>
+            <TableHead>Deadline</TableHead>
+            <TableHead className="w-14 text-right">
+              <span className="sr-only">Actions</span>
+            </TableHead>
           </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+        </TableHeader>
+        <TableBody>
+          {rows.map((row) => (
+            <TableRow key={row.id}>
+              <TableCell className="text-muted-foreground tabular-nums">{row.date ?? "—"}</TableCell>
+              <TableCell className="font-medium">{row.employeeName}</TableCell>
+              <TableCell className="text-muted-foreground">{row.designation}</TableCell>
+              <TableCell className="max-w-64 truncate" title={row.activity}>
+                {row.activity}
+              </TableCell>
+              <TableCell>
+                <StatusBadge status={row.status} />
+              </TableCell>
+              <TableCell className="text-muted-foreground">{row.assignedBy}</TableCell>
+              <TableCell className="text-right tabular-nums">{row.timeTaken}</TableCell>
+              <TableCell className="text-muted-foreground">{row.deadline ?? "—"}</TableCell>
+              <TableCell className="text-right">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  aria-label={`Delete activity by ${row.employeeName}`}
+                  className="text-destructive hover:text-destructive"
+                  onClick={() => handleDelete(row.id)}
+                >
+                  <Trash2 className="size-3.5" aria-hidden />
+                </Button>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
   );
 }

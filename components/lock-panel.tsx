@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import { CalendarRange, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { lockPeriod, lockMonth, removeLock } from "@/app/manager/locks/actions";
 import { Button } from "@/components/ui/button";
@@ -79,8 +80,8 @@ export function LockPanel({ locks }: { locks: Lock[] }) {
   return (
     <div className="space-y-6">
       <div className="grid gap-4 sm:grid-cols-2">
-        <form onSubmit={handleLockMonth} className="flex flex-col gap-2 rounded-lg border p-4">
-          <p className="text-sm font-medium">Lock This Month</p>
+        <form onSubmit={handleLockMonth} className="flex flex-col gap-3 rounded-xl border bg-card p-4">
+          <p className="flex items-center gap-1.5 text-sm font-semibold"><Lock className="size-3.5 text-primary" aria-hidden />Lock This Month</p>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="month">Month</Label>
             <Input id="month" name="month" type="month" required />
@@ -94,8 +95,8 @@ export function LockPanel({ locks }: { locks: Lock[] }) {
           </Button>
         </form>
 
-        <form onSubmit={handleLockRange} className="flex flex-col gap-2 rounded-lg border p-4">
-          <p className="text-sm font-medium">Lock Custom Range</p>
+        <form onSubmit={handleLockRange} className="flex flex-col gap-3 rounded-xl border bg-card p-4">
+          <p className="flex items-center gap-1.5 text-sm font-semibold"><CalendarRange className="size-3.5 text-primary" aria-hidden />Lock Custom Range</p>
           <div className="flex gap-2">
             <div className="flex flex-1 flex-col gap-1.5">
               <Label htmlFor="startDate">Start</Label>
@@ -121,17 +122,24 @@ export function LockPanel({ locks }: { locks: Lock[] }) {
       </div>
 
       <div className="space-y-2">
-        <p className="text-sm font-medium">Existing Locks</p>
+        <p className="text-sm font-semibold">Existing Locks</p>
         {locks.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No locks.</p>
+          <p className="rounded-xl border border-dashed bg-card px-4 py-6 text-center text-sm text-muted-foreground">
+            No locked periods yet — all past dates are open for employee edits.
+          </p>
         ) : (
           <ul className="space-y-2">
             {locks.map((l) => (
-              <li key={l.id} className="flex items-center justify-between rounded-lg border p-3 text-sm">
+              <li key={l.id} className="flex items-center justify-between gap-3 rounded-xl border bg-card p-3 text-sm">
                 <div>
                   <p className="font-medium">{l.label || `${l.startDate} → ${l.endDate}`}</p>
                   <p className="text-muted-foreground">
-                    Locked by {l.lockedByName} on {l.lockedAt}
+                    Locked by {l.lockedByName} on{" "}
+                    {new Date(l.lockedAt).toLocaleDateString("en-IN", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })}
                     {l.reason ? ` — ${l.reason}` : ""}
                   </p>
                 </div>

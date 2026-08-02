@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { Download } from "lucide-react";
 import type { Status } from "@prisma/client";
 import { getCurrentUser } from "@/lib/session";
 import { prisma } from "@/lib/db";
@@ -78,52 +79,57 @@ export default async function ManagerPage({
   }
   const exportHref = "/api/export" + (qs.size ? `?${qs.toString()}` : "");
 
+  const stats = [
+    { label: "Total activities", value: total, valueClass: "" },
+    { label: "Completed", value: completed, valueClass: "text-emerald-700" },
+    { label: "Pending", value: pending, valueClass: "text-amber-700" },
+    { label: "Employees submitted today", value: submittedToday.length, valueClass: "text-primary" },
+  ];
+
   return (
-    <div>
+    <div className="flex min-h-svh flex-col">
       <Nav />
-      <main className="space-y-6 p-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold">Manager Dashboard</h1>
+      <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 sm:p-6">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight">Manager Dashboard</h1>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              All employee activity — filter, export, and lock reporting periods.
+            </p>
+          </div>
           <a href={exportHref} className={buttonVariants({ variant: "default" })}>
-            Export
+            <Download className="size-4" aria-hidden />
+            Export to Excel
           </a>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm text-muted-foreground">Total</CardTitle>
-            </CardHeader>
-            <CardContent className="text-2xl font-semibold">{total}</CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm text-muted-foreground">Completed</CardTitle>
-            </CardHeader>
-            <CardContent className="text-2xl font-semibold">{completed}</CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm text-muted-foreground">Pending</CardTitle>
-            </CardHeader>
-            <CardContent className="text-2xl font-semibold">{pending}</CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm text-muted-foreground">Employees Submitted Today</CardTitle>
-            </CardHeader>
-            <CardContent className="text-2xl font-semibold">{submittedToday.length}</CardContent>
-          </Card>
+          {stats.map((s) => (
+            <Card key={s.label} className="gap-1 py-4">
+              <CardHeader className="pb-0">
+                <CardTitle className="text-[13px] font-medium text-muted-foreground">
+                  {s.label}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className={`text-3xl font-semibold tabular-nums ${s.valueClass}`}>
+                {s.value}
+              </CardContent>
+            </Card>
+          ))}
         </div>
 
-        <ActivityFiltersBar key={qs.toString() || "empty"} />
+        <section className="flex flex-col gap-3">
+          <ActivityFiltersBar key={qs.toString() || "empty"} />
+          <ManagerActivityTable rows={rows} />
+        </section>
 
-        <ManagerActivityTable rows={rows} />
-
-        <div>
-          <h2 className="mb-3 text-lg font-semibold">Period Locks</h2>
+        <section>
+          <h2 className="mb-1 text-lg font-semibold tracking-tight">Period Locks</h2>
+          <p className="mb-3 text-sm text-muted-foreground">
+            Lock a month or date range after review — employees can no longer change entries in it.
+          </p>
           <LockPanel locks={serializedLocks} />
-        </div>
+        </section>
       </main>
     </div>
   );

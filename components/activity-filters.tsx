@@ -12,8 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
-const STATUSES = ["PENDING", "IN_PROGRESS", "COMPLETED", "ON_HOLD"] as const;
+import { STATUSES, statusLabel } from "@/components/status-badge";
 
 export function ActivityFilters() {
   const router = useRouter();
@@ -33,7 +32,7 @@ export function ActivityFilters() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-wrap items-end gap-3 rounded-lg border p-4">
+    <form onSubmit={handleSubmit} className="flex flex-wrap items-end gap-3 rounded-xl border bg-card p-4">
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="employeeName">Employee</Label>
         <Input id="employeeName" name="employeeName" defaultValue={params.get("employeeName") ?? ""} className="w-40" />
@@ -52,7 +51,7 @@ export function ActivityFilters() {
             <SelectItem value="ALL">All</SelectItem>
             {STATUSES.map((s) => (
               <SelectItem key={s} value={s}>
-                {s.replace("_", " ")}
+                {statusLabel(s)}
               </SelectItem>
             ))}
           </SelectContent>
