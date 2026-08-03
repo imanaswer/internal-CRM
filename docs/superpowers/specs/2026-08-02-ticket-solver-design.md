@@ -216,3 +216,30 @@ email ingestion, per-branch dashboards.
 - Ticket events included only when the viewing manager is also tech
   (`user.tech`); activity events always. Derived at page render; no event
   table.
+
+---
+
+# v4 Addendum — Follow-ups & Staleness
+
+**Date:** 2026-08-03 · **Status:** Approved by product owner
+
+## 19. Follow-up notes
+
+- `TicketNote { id, ticketId (Cascade), note, byId → User ("NoteAuthor"), at @default(now) }`, `@@index([ticketId])`. User gains `ticketNotes`.
+- Action `followUpTicket(id, note)`: `requireTech()`; allowed while status ∈
+  {OPEN, TAKEN_UP, FORWARDED}; note validated min 3 chars (reuse solveSchema
+  shape); creates the note; revalidates. Status unchanged.
+- **Follow up** button on OPEN/TAKEN_UP/FORWARDED rows (shared dialog like
+  Solve).
+- Detail timeline: notes interleave chronologically with forwards (between
+  taken-up and solved sections): `Follow-up by <name> · <stamp> — <note>`.
+- Feed event: `T-014 follow-up by <name>: “<note ≤40ch>”` (tech-gated like
+  other ticket events).
+
+## 20. Needs-follow-up staleness cue
+
+- A FORWARDED ticket whose latest touch (latest forward `at` or latest note
+  `at`, whichever is newer) is older than **48h** shows an amber
+  **Needs follow-up** chip in the list's Time cell. Fixed 48h
+  (ponytail: make configurable only if asked). Computed server-side →
+  `needsFollowUp: boolean` on the serialized row.

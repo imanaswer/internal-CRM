@@ -55,7 +55,7 @@ export default async function ManagerPage({
     deadline: a.deadline ? dateToISO(a.deadline) : null,
   }));
 
-  const [feedActivities, recentTickets, recentForwards] = await Promise.all([
+  const [feedActivities, recentTickets, recentForwards, recentNotes] = await Promise.all([
     prisma.activity.findMany({
       orderBy: { createdAt: "desc" },
       take: 15,
@@ -84,6 +84,16 @@ export default async function ManagerPage({
           include: {
             by: { select: { name: true } },
             ticket: { select: { num: true, title: true } },
+          },
+        })
+      : Promise.resolve([]),
+    user.tech
+      ? prisma.ticketNote.findMany({
+          orderBy: { at: "desc" },
+          take: 15,
+          include: {
+            by: { select: { name: true } },
+            ticket: { select: { num: true } },
           },
         })
       : Promise.resolve([]),
@@ -120,6 +130,13 @@ export default async function ManagerPage({
     events.push({
       at: f.at.toISOString(),
       text: `${ticketNo(f.ticket.num)} forwarded to ${f.to} by ${f.by.name}`,
+    });
+  }
+
+  for (const n of recentNotes) {
+    events.push({
+      at: n.at.toISOString(),
+      text: `${ticketNo(n.ticket.num)} follow-up by ${n.by.name}: “${truncateTitle(n.note)}”`,
     });
   }
 

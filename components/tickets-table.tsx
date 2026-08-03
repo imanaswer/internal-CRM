@@ -12,6 +12,7 @@ import {
   deleteTicket,
   forwardTicket,
   takeBackTicket,
+  followUpTicket,
 } from "@/app/tickets/actions";
 import { buildWaLink, solvedMessage, ticketNo } from "@/lib/whatsapp";
 import { formatDuration, istStamp } from "@/lib/duration";
@@ -68,6 +69,7 @@ export type TicketRow = {
   resolutionNote: string | null;
   createdAt: string;
   createdByName: string;
+  needsFollowUp: boolean;
 };
 
 function truncate(s: string, n: number) {
@@ -98,6 +100,8 @@ export function TicketsTable({ rows, isManager }: { rows: TicketRow[]; isManager
   const [forwardingId, setForwardingId] = useState<string | null>(null);
   const [forwardTo, setForwardTo] = useState("");
   const [forwardReason, setForwardReason] = useState("");
+  const [followingUpId, setFollowingUpId] = useState<string | null>(null);
+  const [followUpNote, setFollowUpNote] = useState("");
   const [detailRow, setDetailRow] = useState<TicketRow | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -161,6 +165,29 @@ export function TicketsTable({ rows, isManager }: { rows: TicketRow[]; isManager
     setForwardingId(null);
     setForwardTo("");
     setForwardReason("");
+    router.refresh();
+  }
+
+  async function handleFollowUpSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!followingUpId) return;
+    setPending(true);
+    let result: Awaited<ReturnType<typeof followUpTicket>>;
+    try {
+      result = await followUpTicket(followingUpId, followUpNote);
+    } catch {
+      toast.error("Request failed — your session may have expired. Refresh the page.");
+      setPending(false);
+      return;
+    }
+    setPending(false);
+    if (!result.ok) {
+      toast.error(result.error);
+      return;
+    }
+    toast.success("Follow-up added");
+    setFollowingUpId(null);
+    setFollowUpNote("");
     router.refresh();
   }
 
@@ -248,6 +275,11 @@ export function TicketsTable({ rows, isManager }: { rows: TicketRow[]; isManager
                   <TableCell className="text-sm whitespace-nowrap">
                     <div className="text-muted-foreground">{istStamp(new Date(row.createdAt))}</div>
                     <div>{timeLine2(row, now)}</div>
+                    {row.needsFollowUp && (
+                      <span className="mt-0.5 inline-flex items-center rounded-md bg-amber-50 px-2 py-0.5 text-xs font-medium whitespace-nowrap text-amber-800 ring-1 ring-inset ring-amber-600/25">
+                        Needs follow-up
+                      </span>
+                    )}
                   </TableCell>
                   <TableCell className="text-muted-foreground">{row.takenByName ?? "—"}</TableCell>
                   <TableCell className="text-right">
@@ -287,6 +319,19 @@ export function TicketsTable({ rows, isManager }: { rows: TicketRow[]; isManager
                           }}
                         >
                           Forward
+                        </Button>
+                      )}
+                      {(row.status === "OPEN" || row.status === "TAKEN_UP" || row.status === "FORWARDED") && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          aria-label={`Follow up ${ticketNo(row.num)}`}
+                          onClick={() => {
+                            setFollowingUpId(row.id);
+                            setFollowUpNote("");
+                          }}
+                        >
+                          Follow up
                         </Button>
                       )}
                       {(row.status === "OPEN" || row.status === "TAKEN_UP") && (
@@ -403,6 +448,30 @@ export function TicketsTable({ rows, isManager }: { rows: TicketRow[]; isManager
             </div>
             <Button type="submit" disabled={pending}>
               {pending ? "Saving..." : "Forward"}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!followingUpId} onOpenChange={(open) => !open && setFollowingUpId(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Follow up on ticket</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleFollowUpSubmit} className="flex flex-col gap-4">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="followUpNote">Note</Label>
+              <Textarea
+                id="followUpNote"
+                value={followUpNote}
+                onChange={(e) => setFollowUpNote(e.target.value)}
+                minLength={3}
+                required
+                autoFocus
+              />
+            </div>
+            <Button type="submit" disabled={pending}>
+              {pending ? "Saving..." : "Add follow-up"}
             </Button>
           </form>
         </DialogContent>

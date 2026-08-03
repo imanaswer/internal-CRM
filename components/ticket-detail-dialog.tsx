@@ -161,12 +161,23 @@ export function TicketDetailDialog({
                       {formatDuration(Date.parse(row.takenAt) - Date.parse(row.createdAt))} after logging)
                     </li>
                   )}
-                  {[...detail.forwards].reverse().map((f, i) => (
-                    <li key={i}>
-                      Forwarded to {f.to} by {f.byName} · {fmtDate(f.at)} — {f.reason} (
-                      {formatDuration(Date.parse(f.at) - Date.parse(row.createdAt))} after logging)
-                    </li>
-                  ))}
+                  {[
+                    ...detail.forwards.map((f) => ({ ...f, kind: "forward" as const })),
+                    ...detail.notes.map((n) => ({ ...n, kind: "note" as const })),
+                  ]
+                    .sort((a, b) => Date.parse(a.at) - Date.parse(b.at))
+                    .map((entry, i) =>
+                      entry.kind === "forward" ? (
+                        <li key={i}>
+                          Forwarded to {entry.to} by {entry.byName} · {fmtDate(entry.at)} — {entry.reason} (
+                          {formatDuration(Date.parse(entry.at) - Date.parse(row.createdAt))} after logging)
+                        </li>
+                      ) : (
+                        <li key={i}>
+                          Follow-up by {entry.byName} · {fmtDate(entry.at)} — {entry.note}
+                        </li>
+                      )
+                    )}
                   {row.solvedAt && (
                     <li>
                       Solved by {row.solvedByName} · {fmtDate(row.solvedAt)} — {row.resolutionNote} — resolved in{" "}
