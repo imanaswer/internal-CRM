@@ -1,6 +1,6 @@
 import { auth } from "@/auth";
 
-export type SessionUser = { id: string; name: string; role: "EMPLOYEE" | "MANAGER"; designation: string | null };
+export type SessionUser = { id: string; name: string; role: "EMPLOYEE" | "MANAGER"; designation: string | null; tech: boolean };
 
 export async function getCurrentUser(): Promise<SessionUser | null> {
   const s = await auth();
@@ -10,6 +10,7 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
     name: s.user.name ?? "",
     role: (s.user as any).role,
     designation: (s.user as any).designation ?? null,
+    tech: (s.user as any).tech ?? false,
   };
 }
 
@@ -22,5 +23,11 @@ export async function requireUser(): Promise<SessionUser> {
 export async function requireManager(): Promise<SessionUser> {
   const u = await requireUser();
   if (u.role !== "MANAGER") throw new Error("FORBIDDEN");
+  return u;
+}
+
+export async function requireTech(): Promise<SessionUser> {
+  const u = await requireUser();
+  if (!u.tech) throw new Error("FORBIDDEN");
   return u;
 }

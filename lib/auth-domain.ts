@@ -19,3 +19,10 @@ export function resolveRole(email: string, managerEmails: string): "MANAGER" | "
   );
   return set.has(email.trim().toLowerCase()) ? "MANAGER" : "EMPLOYEE";
 }
+
+export function resolveTech(email: string, techEmails: string): boolean {
+  const set = new Set(
+    techEmails.split(",").map((e) => e.trim().toLowerCase()).filter(Boolean)
+  );
+  return set.has(email.trim().toLowerCase());
+}

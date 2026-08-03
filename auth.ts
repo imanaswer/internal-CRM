@@ -2,7 +2,7 @@ import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import Credentials from "next-auth/providers/credentials";
 import { prisma } from "@/lib/db";
-import { isAllowedGoogleProfile, resolveRole } from "@/lib/auth-domain";
+import { isAllowedGoogleProfile, resolveRole, resolveTech } from "@/lib/auth-domain";
 
 const tempEnabled =
   process.env.ALLOW_TEMP_LOGIN === "true" && process.env.NODE_ENV !== "production";
@@ -97,12 +97,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           }
         }
       }
+      // Re-resolved every request (env-only, no DB) so removing someone from
+      // TECH_EMAILS revokes ticket access immediately, not at next sign-in.
+      token.tech = resolveTech((token.email as string) ?? "", process.env.TECH_EMAILS ?? "");
       return token;
     },
     async session({ session, token }) {
       (session.user as any).id = token.uid as string;
       (session.user as any).role = token.role;
       (session.user as any).designation = token.designation ?? null;
+      (session.user as any).tech = token.tech ?? false;
       return session;
     },
     authorized({ auth }) {

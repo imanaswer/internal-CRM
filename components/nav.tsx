@@ -21,6 +21,7 @@ export async function Nav() {
           { href: "/dashboard", label: "Dashboard" },
           { href: "/activities", label: "My Activities" },
         ];
+  if (u.tech) links.push({ href: "/tickets", label: "Tickets" });
 
   const initials = u.name
     .split(/\s+/)
