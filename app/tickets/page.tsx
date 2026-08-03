@@ -150,10 +150,10 @@ export default async function TicketsPage({
 
         <form method="GET" className="flex flex-wrap items-end gap-3 rounded-xl border bg-card p-4">
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="status" className="text-sm font-medium">
+            <label htmlFor="filter-status" className="text-sm font-medium">
               Status
             </label>
-            <select id="status" name="status" defaultValue={status ?? ""} className={selectClass}>
+            <select id="filter-status" name="status" defaultValue={status ?? ""} className={selectClass}>
               <option value="">All</option>
               {TICKET_STATUSES.map((s) => (
                 <option key={s} value={s}>
@@ -163,10 +163,10 @@ export default async function TicketsPage({
             </select>
           </div>
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="priority" className="text-sm font-medium">
+            <label htmlFor="filter-priority" className="text-sm font-medium">
               Priority
             </label>
-            <select id="priority" name="priority" defaultValue={priority ?? ""} className={selectClass}>
+            <select id="filter-priority" name="priority" defaultValue={priority ?? ""} className={selectClass}>
               <option value="">All</option>
               {TICKET_PRIORITIES.map((p) => (
                 <option key={p} value={p}>
@@ -176,10 +176,10 @@ export default async function TicketsPage({
             </select>
           </div>
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="category" className="text-sm font-medium">
+            <label htmlFor="filter-category" className="text-sm font-medium">
               Category
             </label>
-            <select id="category" name="category" defaultValue={category ?? ""} className={selectClass}>
+            <select id="filter-category" name="category" defaultValue={category ?? ""} className={selectClass}>
               <option value="">All</option>
               {TICKET_CATEGORIES.map((c) => (
                 <option key={c} value={c}>
