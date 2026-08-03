@@ -3,7 +3,15 @@ import type { Prisma } from "@prisma/client";
 import { getCurrentUser } from "@/lib/session";
 import { prisma } from "@/lib/db";
 import { todayISO } from "@/lib/dates";
-import { TICKET_STATUSES, TICKET_PRIORITIES, label as fmtLabel, type TicketStatus, type TicketPriority } from "@/components/ticket-badges";
+import {
+  TICKET_STATUSES,
+  TICKET_PRIORITIES,
+  TICKET_CATEGORIES,
+  label as fmtLabel,
+  type TicketStatus,
+  type TicketPriority,
+  type TicketCategory,
+} from "@/components/ticket-badges";
 import { Nav } from "@/components/nav";
 import { NewTicketDialog } from "@/components/new-ticket-dialog";
 import { TicketsTable, type TicketRow } from "@/components/tickets-table";
@@ -11,7 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 
-const STATUS_ORDER: Record<TicketStatus, number> = { OPEN: 0, TAKEN_UP: 1, SOLVED: 2, DUPLICATE: 3 };
+const STATUS_ORDER: Record<TicketStatus, number> = { OPEN: 0, TAKEN_UP: 1, FORWARDED: 2, SOLVED: 3, DUPLICATE: 4 };
 const PRIORITY_ORDER: Record<TicketPriority, number> = { URGENT: 0, HIGH: 1, MEDIUM: 2, LOW: 3 };
 
 // Native select styled to match the shadcn Input for a consistent filter bar.
@@ -38,10 +46,14 @@ export default async function TicketsPage({
   const status = statusParam && TICKET_STATUSES.includes(statusParam as TicketStatus) ? (statusParam as TicketStatus) : undefined;
   const priority =
     priorityParam && TICKET_PRIORITIES.includes(priorityParam as TicketPriority) ? (priorityParam as TicketPriority) : undefined;
+  const categoryParam = get("category");
+  const category =
+    categoryParam && TICKET_CATEGORIES.includes(categoryParam as TicketCategory) ? (categoryParam as TicketCategory) : undefined;
   const q = get("q");
 
   const baseWhere: Prisma.TicketWhereInput = {};
   if (priority) baseWhere.priority = priority;
+  if (category) baseWhere.category = category;
   if (q) {
     baseWhere.OR = [
       { title: { contains: q, mode: "insensitive" } },
@@ -92,8 +104,11 @@ export default async function TicketsPage({
     ipAddress: t.ipAddress,
     assetId: t.assetId,
     priority: t.priority,
+    category: t.category,
     status: t.status,
+    forwardedTo: t.forwardedTo,
     takenByName: t.takenBy?.name ?? null,
+    takenAt: t.takenAt ? t.takenAt.toISOString() : null,
     solvedByName: t.solvedBy?.name ?? null,
     solvedAt: t.solvedAt ? t.solvedAt.toISOString() : null,
     resolutionNote: t.resolutionNote,
@@ -135,10 +150,10 @@ export default async function TicketsPage({
 
         <form method="GET" className="flex flex-wrap items-end gap-3 rounded-xl border bg-card p-4">
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="status" className="text-sm font-medium">
+            <label htmlFor="filter-status" className="text-sm font-medium">
               Status
             </label>
-            <select id="status" name="status" defaultValue={status ?? ""} className={selectClass}>
+            <select id="filter-status" name="status" defaultValue={status ?? ""} className={selectClass}>
               <option value="">All</option>
               {TICKET_STATUSES.map((s) => (
                 <option key={s} value={s}>
@@ -148,14 +163,27 @@ export default async function TicketsPage({
             </select>
           </div>
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="priority" className="text-sm font-medium">
+            <label htmlFor="filter-priority" className="text-sm font-medium">
               Priority
             </label>
-            <select id="priority" name="priority" defaultValue={priority ?? ""} className={selectClass}>
+            <select id="filter-priority" name="priority" defaultValue={priority ?? ""} className={selectClass}>
               <option value="">All</option>
               {TICKET_PRIORITIES.map((p) => (
                 <option key={p} value={p}>
                   {fmtLabel(p)}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="filter-category" className="text-sm font-medium">
+              Category
+            </label>
+            <select id="filter-category" name="category" defaultValue={category ?? ""} className={selectClass}>
+              <option value="">All</option>
+              {TICKET_CATEGORIES.map((c) => (
+                <option key={c} value={c}>
+                  {fmtLabel(c)}
                 </option>
               ))}
             </select>

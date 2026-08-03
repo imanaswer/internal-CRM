@@ -128,3 +128,48 @@ others optional trimmed strings. `solveSchema`: note ≥ 3 chars.
 
 Automated sending (provider API), attachments, comments/threads, SLA timers,
 email ingestion, per-branch dashboards.
+
+---
+
+# v2 Addendum — Forwarding, Category, Detail View, Attachments
+
+**Date:** 2026-08-03 · **Status:** Approved by product owner
+
+## 12. Forwarding (to anyone, not just system users)
+
+- New status **FORWARDED** (`TicketStatus` gains `FORWARDED`).
+- Forward action from OPEN, TAKEN_UP, or FORWARDED (re-forward): dialog with
+  `forwardedTo` (free text — "Server team", vendor, 3rd party; min 2 chars) and
+  `reason` (required, min 3 chars).
+- Every forward appends a `TicketForward` row (full trail, newest shown on the
+  ticket): `{ id, ticketId, to, reason, byId (User), at }`. The ticket also
+  caches the latest `forwardedTo` for list display ("→ Server team").
+- From FORWARDED: **Take Back** (→ TAKEN_UP under the actor), **Solve**
+  (→ SOLVED, note required, WhatsApp available as usual), **Forward** again.
+- Transitions updated: solve allowed from OPEN/TAKEN_UP/FORWARDED; duplicate
+  from OPEN/TAKEN_UP; reopen from SOLVED/DUPLICATE (clears forward cache too).
+
+## 13. Category — Tech / Non-Tech
+
+- `TicketCategory { TECH NON_TECH }`, default TECH, chosen on the create form,
+  badge in list + detail, filter in the filter bar. Same list, same team.
+
+## 14. Detail view
+
+- Clicking a ticket row opens a detail dialog: T-no + title, full description,
+  category/source/priority/status badges, contact name/phone, branch, IP,
+  asset ID, and a **timeline**: created (by/at), taken up (by/at), each forward
+  (by → to, reason, at), solved (by/at + resolution note). Attachments listed
+  with download links + an upload field.
+
+## 15. Attachments
+
+- `TicketAttachment { id, ticketId, filename, mimeType, size, data Bytes,
+  uploadedById, createdAt }` — stored in Postgres. Cap 5 MB/file; allowed
+  types: images (png/jpg/webp/gif), PDF, doc/docx/xls/xlsx/txt.
+- Upload on the New Ticket form (optional, multiple) and from the detail
+  dialog. Server actions receive FormData; size/type validated server-side.
+- Download via tech-gated route `GET /api/tickets/attachment/[id]`
+  (requireTech; Content-Disposition with original filename).
+- ponytail: DB-stored bytes — move to Supabase Storage if volume grows;
+  UI/API contract unchanged.
