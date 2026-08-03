@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useState, type FormEvent, type MouseEvent } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Trash2, SearchX } from "lucide-react";
@@ -10,17 +10,23 @@ import {
   markDuplicate,
   reopenTicket,
   deleteTicket,
+  forwardTicket,
+  takeBackTicket,
 } from "@/app/tickets/actions";
 import { buildWaLink, solvedMessage, ticketNo } from "@/lib/whatsapp";
 import {
   TicketStatusBadge,
   TicketPriorityBadge,
   TicketSourceBadge,
+  TicketCategoryBadge,
   type TicketSource,
   type TicketPriority,
   type TicketStatus,
+  type TicketCategory,
 } from "@/components/ticket-badges";
+import { TicketDetailDialog } from "@/components/ticket-detail-dialog";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -50,8 +56,11 @@ export type TicketRow = {
   ipAddress: string | null;
   assetId: string | null;
   priority: TicketPriority;
+  category: TicketCategory;
   status: TicketStatus;
+  forwardedTo: string | null;
   takenByName: string | null;
+  takenAt: string | null;
   solvedByName: string | null;
   solvedAt: string | null;
   resolutionNote: string | null;
@@ -63,6 +72,10 @@ export function TicketsTable({ rows, isManager }: { rows: TicketRow[]; isManager
   const router = useRouter();
   const [solvingId, setSolvingId] = useState<string | null>(null);
   const [note, setNote] = useState("");
+  const [forwardingId, setForwardingId] = useState<string | null>(null);
+  const [forwardTo, setForwardTo] = useState("");
+  const [forwardReason, setForwardReason] = useState("");
+  const [detailRow, setDetailRow] = useState<TicketRow | null>(null);
   const [pending, setPending] = useState(false);
 
   async function runAction(action: () => Promise<{ ok: true } | { ok: false; error: string }>, successMsg: string) {
@@ -104,6 +117,35 @@ export function TicketsTable({ rows, isManager }: { rows: TicketRow[]; isManager
     router.refresh();
   }
 
+  async function handleForwardSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!forwardingId) return;
+    setPending(true);
+    let result: Awaited<ReturnType<typeof forwardTicket>>;
+    try {
+      result = await forwardTicket(forwardingId, forwardTo, forwardReason);
+    } catch {
+      toast.error("Request failed — your session may have expired. Refresh the page.");
+      setPending(false);
+      return;
+    }
+    setPending(false);
+    if (!result.ok) {
+      toast.error(result.error);
+      return;
+    }
+    toast.success("Ticket forwarded");
+    setForwardingId(null);
+    setForwardTo("");
+    setForwardReason("");
+    router.refresh();
+  }
+
+  function handleRowClick(row: TicketRow, e: MouseEvent<HTMLTableRowElement>) {
+    if ((e.target as HTMLElement).closest("button,a")) return;
+    setDetailRow(row);
+  }
+
   if (rows.length === 0) {
     return (
       <div className="flex flex-col items-center gap-2 rounded-xl border bg-card py-12 text-center">
@@ -123,6 +165,7 @@ export function TicketsTable({ rows, isManager }: { rows: TicketRow[]; isManager
               <TableHead>Title</TableHead>
               <TableHead>Contact</TableHead>
               <TableHead>Source</TableHead>
+              <TableHead>Category</TableHead>
               <TableHead>Priority</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Taken by</TableHead>
@@ -148,7 +191,11 @@ export function TicketsTable({ rows, isManager }: { rows: TicketRow[]; isManager
                   : null;
 
               return (
-                <TableRow key={row.id}>
+                <TableRow
+                  key={row.id}
+                  className="cursor-pointer"
+                  onClick={(e) => handleRowClick(row, e)}
+                >
                   <TableCell className="font-medium tabular-nums">{ticketNo(row.num)}</TableCell>
                   <TableCell className="max-w-56 truncate" title={row.description ?? row.title}>
                     {row.title}
@@ -161,10 +208,16 @@ export function TicketsTable({ rows, isManager }: { rows: TicketRow[]; isManager
                     <TicketSourceBadge source={row.source} />
                   </TableCell>
                   <TableCell>
+                    <TicketCategoryBadge category={row.category} />
+                  </TableCell>
+                  <TableCell>
                     <TicketPriorityBadge priority={row.priority} />
                   </TableCell>
                   <TableCell>
                     <TicketStatusBadge status={row.status} />
+                    {row.status === "FORWARDED" && row.forwardedTo && (
+                      <div className="mt-0.5 text-xs text-muted-foreground">→ {row.forwardedTo}</div>
+                    )}
                   </TableCell>
                   <TableCell className="text-muted-foreground">{row.takenByName ?? "—"}</TableCell>
                   <TableCell className="text-right">
@@ -179,7 +232,7 @@ export function TicketsTable({ rows, isManager }: { rows: TicketRow[]; isManager
                           Take Up
                         </Button>
                       )}
-                      {(row.status === "OPEN" || row.status === "TAKEN_UP") && (
+                      {(row.status === "OPEN" || row.status === "TAKEN_UP" || row.status === "FORWARDED") && (
                         <Button
                           size="sm"
                           variant="ghost"
@@ -192,6 +245,20 @@ export function TicketsTable({ rows, isManager }: { rows: TicketRow[]; isManager
                           Solve
                         </Button>
                       )}
+                      {(row.status === "OPEN" || row.status === "TAKEN_UP" || row.status === "FORWARDED") && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          aria-label={`Forward ${ticketNo(row.num)}`}
+                          onClick={() => {
+                            setForwardingId(row.id);
+                            setForwardTo("");
+                            setForwardReason("");
+                          }}
+                        >
+                          Forward
+                        </Button>
+                      )}
                       {(row.status === "OPEN" || row.status === "TAKEN_UP") && (
                         <Button
                           size="sm"
@@ -200,6 +267,16 @@ export function TicketsTable({ rows, isManager }: { rows: TicketRow[]; isManager
                           onClick={() => runAction(() => markDuplicate(row.id), "Marked duplicate")}
                         >
                           Duplicate
+                        </Button>
+                      )}
+                      {row.status === "FORWARDED" && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          aria-label={`Take back ${ticketNo(row.num)}`}
+                          onClick={() => runAction(() => takeBackTicket(row.id), "Ticket taken back")}
+                        >
+                          Take Back
                         </Button>
                       )}
                       {row.status === "SOLVED" && waLink && (
@@ -266,6 +343,42 @@ export function TicketsTable({ rows, isManager }: { rows: TicketRow[]; isManager
           </form>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={!!forwardingId} onOpenChange={(open) => !open && setForwardingId(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Forward ticket</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleForwardSubmit} className="flex flex-col gap-4">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="forwardTo">Forward to</Label>
+              <Input
+                id="forwardTo"
+                value={forwardTo}
+                onChange={(e) => setForwardTo(e.target.value)}
+                minLength={2}
+                required
+                autoFocus
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="forwardReason">Reason</Label>
+              <Textarea
+                id="forwardReason"
+                value={forwardReason}
+                onChange={(e) => setForwardReason(e.target.value)}
+                minLength={3}
+                required
+              />
+            </div>
+            <Button type="submit" disabled={pending}>
+              {pending ? "Saving..." : "Forward"}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <TicketDetailDialog row={detailRow} onOpenChange={(open) => !open && setDetailRow(null)} />
     </>
   );
 }

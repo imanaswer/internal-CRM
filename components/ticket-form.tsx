@@ -14,11 +14,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { TICKET_SOURCES, TICKET_PRIORITIES, label as fmtLabel, type TicketSource, type TicketPriority } from "@/components/ticket-badges";
+import {
+  TICKET_SOURCES,
+  TICKET_PRIORITIES,
+  TICKET_CATEGORIES,
+  label as fmtLabel,
+  type TicketSource,
+  type TicketPriority,
+  type TicketCategory,
+} from "@/components/ticket-badges";
+import { uploadAttachments } from "@/app/tickets/actions";
 import type { TicketInput } from "@/lib/validation";
 
 type Props = {
-  action: (input: TicketInput) => Promise<{ ok: true } | { ok: false; error: string }>;
+  action: (input: TicketInput) => Promise<{ ok: true; id: string } | { ok: false; error: string }>;
   onSuccess?: () => void;
 };
 
@@ -26,6 +35,7 @@ export function TicketForm({ action, onSuccess }: Props) {
   const router = useRouter();
   const [source, setSource] = useState<TicketSource>("PHONE");
   const [priority, setPriority] = useState<TicketPriority>("MEDIUM");
+  const [category, setCategory] = useState<TicketCategory>("TECH");
   const [pending, setPending] = useState(false);
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
@@ -33,6 +43,7 @@ export function TicketForm({ action, onSuccess }: Props) {
     // e.currentTarget is nulled after the await — keep a real reference.
     const formEl = e.currentTarget;
     const form = new FormData(formEl);
+    const files = (form.getAll("files") as File[]).filter((f) => f.size > 0);
     const input: TicketInput = {
       title: String(form.get("title") ?? ""),
       description: String(form.get("description") ?? "") || undefined,
@@ -43,7 +54,7 @@ export function TicketForm({ action, onSuccess }: Props) {
       priority,
       ipAddress: String(form.get("ipAddress") ?? "") || undefined,
       assetId: String(form.get("assetId") ?? "") || undefined,
-      category: "TECH", // v2 Task 3 adds the real select
+      category,
     };
 
     setPending(true);
@@ -52,19 +63,33 @@ export function TicketForm({ action, onSuccess }: Props) {
       result = await action(input);
     } catch {
       toast.error("Request failed — your session may have expired. Refresh the page.");
-      return;
-    } finally {
       setPending(false);
+      return;
     }
 
     if (!result.ok) {
       toast.error(result.error);
+      setPending(false);
       return;
     }
+
+    if (files.length > 0) {
+      const fd = new FormData();
+      for (const f of files) fd.append("files", f);
+      try {
+        const uploadResult = await uploadAttachments(result.id, fd);
+        if (!uploadResult.ok) toast.error(`Ticket created; attachment failed: ${uploadResult.error}`);
+      } catch {
+        toast.error("Ticket created; attachment upload failed — your session may have expired.");
+      }
+    }
+    setPending(false);
+
     toast.success("Ticket created");
     formEl.reset();
     setSource("PHONE");
     setPriority("MEDIUM");
+    setCategory("TECH");
     router.refresh();
     onSuccess?.();
   }
@@ -97,7 +122,7 @@ export function TicketForm({ action, onSuccess }: Props) {
         <Input id="branch" name="branch" />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-3 gap-4">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="source">Source</Label>
           <Select value={source} onValueChange={(v) => setSource(v as TicketSource)}>
@@ -128,6 +153,21 @@ export function TicketForm({ action, onSuccess }: Props) {
             </SelectContent>
           </Select>
         </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="category">Category</Label>
+          <Select value={category} onValueChange={(v) => setCategory(v as TicketCategory)}>
+            <SelectTrigger id="category" className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {TICKET_CATEGORIES.map((c) => (
+                <SelectItem key={c} value={c}>
+                  {fmtLabel(c)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
@@ -139,6 +179,17 @@ export function TicketForm({ action, onSuccess }: Props) {
           <Label htmlFor="assetId">Asset/Device ID</Label>
           <Input id="assetId" name="assetId" />
         </div>
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="files">Attachments</Label>
+        <Input
+          id="files"
+          name="files"
+          type="file"
+          multiple
+          accept=".png,.jpg,.jpeg,.webp,.gif,.pdf,.doc,.docx,.xls,.xlsx,.txt"
+        />
       </div>
 
       <Button type="submit" disabled={pending}>
