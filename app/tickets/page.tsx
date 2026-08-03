@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import type { Prisma } from "@prisma/client";
 import { getCurrentUser } from "@/lib/session";
 import { prisma } from "@/lib/db";
-import { parseISODate, todayISO } from "@/lib/dates";
+import { todayISO } from "@/lib/dates";
 import { TICKET_STATUSES, TICKET_PRIORITIES, label as fmtLabel, type TicketStatus, type TicketPriority } from "@/components/ticket-badges";
 import { Nav } from "@/components/nav";
 import { NewTicketDialog } from "@/components/new-ticket-dialog";
@@ -64,7 +64,11 @@ export default async function TicketsPage({
     }),
     prisma.ticket.count({ where: { ...baseWhere, status: "OPEN" } }),
     prisma.ticket.count({ where: { ...baseWhere, status: "TAKEN_UP" } }),
-    prisma.ticket.count({ where: { ...baseWhere, status: "SOLVED", solvedAt: { gte: parseISODate(todayISO()) } } }),
+    // solvedAt is a real timestamp, so anchor to the true start of the IST day
+    // (parseISODate would give UTC midnight — 5.5h late).
+    prisma.ticket.count({
+      where: { ...baseWhere, status: "SOLVED", solvedAt: { gte: new Date(`${todayISO()}T00:00:00+05:30`) } },
+    }),
   ]);
 
   // ponytail: in-memory sort, move to SQL ordering if ticket volume grows
