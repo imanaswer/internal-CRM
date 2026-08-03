@@ -2,7 +2,7 @@ import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import Credentials from "next-auth/providers/credentials";
 import { prisma } from "@/lib/db";
-import { isAllowedGoogleProfile, resolveRole } from "@/lib/auth-domain";
+import { isAllowedGoogleProfile, resolveRole, resolveTech } from "@/lib/auth-domain";
 
 const tempEnabled =
   process.env.ALLOW_TEMP_LOGIN === "true" && process.env.NODE_ENV !== "production";
@@ -94,6 +94,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             token.role = db.role;
             token.designation = db.designation;
             token.name = db.name;
+            token.tech = resolveTech(db.email, process.env.TECH_EMAILS ?? "");
           }
         }
       }
@@ -103,6 +104,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       (session.user as any).id = token.uid as string;
       (session.user as any).role = token.role;
       (session.user as any).designation = token.designation ?? null;
+      (session.user as any).tech = token.tech ?? false;
       return session;
     },
     authorized({ auth }) {
