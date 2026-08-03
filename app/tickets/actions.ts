@@ -115,15 +115,21 @@ export async function forwardTicket(id: string, to: string, reason: string): Pro
   const parsed = forwardSchema.safeParse({ to, reason });
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0].message };
   try {
-    const r = await prisma.ticket.updateMany({
-      where: { id, status: { in: ["OPEN", "TAKEN_UP", "FORWARDED"] } },
-      data: { status: "FORWARDED", forwardedTo: parsed.data.to },
+    // One transaction: the status flip and its trail row commit together,
+    // so a FORWARDED ticket can never lack the matching audit entry.
+    const guarded = await prisma.$transaction(async (tx) => {
+      const r = await tx.ticket.updateMany({
+        where: { id, status: { in: ["OPEN", "TAKEN_UP", "FORWARDED"] } },
+        data: { status: "FORWARDED", forwardedTo: parsed.data.to },
+      });
+      if (r.count === 0) return false;
+      await tx.ticketForward.create({
+        data: { ticketId: id, to: parsed.data.to, reason: parsed.data.reason, byId: user.id },
+      });
+      return true;
     });
-    if (r.count === 0)
+    if (!guarded)
       return { ok: false, error: "Ticket not found or its status just changed — refresh." };
-    await prisma.ticketForward.create({
-      data: { ticketId: id, to: parsed.data.to, reason: parsed.data.reason, byId: user.id },
-    });
     revalidatePath("/tickets");
     return { ok: true };
   } catch (e) {
