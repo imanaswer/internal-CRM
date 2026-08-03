@@ -4,12 +4,17 @@ import { getCurrentUser } from "@/lib/session";
 import { prisma } from "@/lib/db";
 import { buildActivityWhere, parseActivityFilters } from "@/lib/activity-query";
 import { dateToISO, parseISODate, todayISO } from "@/lib/dates";
+import { formatDuration } from "@/lib/duration";
+import { ticketNo } from "@/lib/whatsapp";
 import { Nav } from "@/components/nav";
 import { ActivityFilters as ActivityFiltersBar } from "@/components/activity-filters";
 import { ManagerActivityTable } from "@/components/manager-activity-table";
 import { LockPanel } from "@/components/lock-panel";
+import { RecentActivityFeed } from "@/components/recent-activity-feed";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+
+const truncateTitle = (s: string) => (s.length > 40 ? `${s.slice(0, 39)}…` : s);
 
 export default async function ManagerPage({
   searchParams,
@@ -49,6 +54,77 @@ export default async function ManagerPage({
     timeTaken: Number(a.timeTaken),
     deadline: a.deadline ? dateToISO(a.deadline) : null,
   }));
+
+  const [feedActivities, recentTickets, recentForwards] = await Promise.all([
+    prisma.activity.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 15,
+      select: { id: true, employeeName: true, activity: true, createdAt: true },
+    }),
+    user.tech
+      ? prisma.ticket.findMany({
+          orderBy: { createdAt: "desc" },
+          take: 15,
+          select: {
+            num: true,
+            title: true,
+            createdAt: true,
+            createdBy: { select: { name: true } },
+            takenAt: true,
+            takenBy: { select: { name: true } },
+            solvedAt: true,
+            solvedBy: { select: { name: true } },
+          },
+        })
+      : Promise.resolve([]),
+    user.tech
+      ? prisma.ticketForward.findMany({
+          orderBy: { at: "desc" },
+          take: 15,
+          include: {
+            by: { select: { name: true } },
+            ticket: { select: { num: true, title: true } },
+          },
+        })
+      : Promise.resolve([]),
+  ]);
+
+  const events: { at: string; text: string }[] = [];
+
+  for (const a of feedActivities) {
+    events.push({
+      at: a.createdAt.toISOString(),
+      text: `${a.employeeName} logged “${truncateTitle(a.activity)}”`,
+    });
+  }
+
+  for (const t of recentTickets) {
+    const no = ticketNo(t.num);
+    events.push({
+      at: t.createdAt.toISOString(),
+      text: `${no} “${truncateTitle(t.title)}” logged by ${t.createdBy.name}`,
+    });
+    if (t.takenAt && t.takenBy) {
+      events.push({ at: t.takenAt.toISOString(), text: `${no} taken up by ${t.takenBy.name}` });
+    }
+    if (t.solvedAt && t.solvedBy) {
+      const resolved = formatDuration(t.solvedAt.getTime() - t.createdAt.getTime());
+      events.push({
+        at: t.solvedAt.toISOString(),
+        text: `${no} “${truncateTitle(t.title)}” solved by ${t.solvedBy.name} (resolved in ${resolved})`,
+      });
+    }
+  }
+
+  for (const f of recentForwards) {
+    events.push({
+      at: f.at.toISOString(),
+      text: `${ticketNo(f.ticket.num)} forwarded to ${f.to} by ${f.by.name}`,
+    });
+  }
+
+  events.sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
+  const feedEvents = events.slice(0, 15);
 
   const serializedLocks = locks.map((l) => ({
     id: l.id,
@@ -104,6 +180,8 @@ export default async function ManagerPage({
             </Card>
           ))}
         </div>
+
+        <RecentActivityFeed events={feedEvents} />
 
         <section className="flex flex-col gap-3">
           <ActivityFiltersBar key={qs.toString() || "empty"} />

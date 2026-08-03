@@ -14,6 +14,7 @@ import {
   takeBackTicket,
 } from "@/app/tickets/actions";
 import { buildWaLink, solvedMessage, ticketNo } from "@/lib/whatsapp";
+import { formatDuration, istStamp } from "@/lib/duration";
 import {
   TicketStatusBadge,
   TicketPriorityBadge,
@@ -67,6 +68,25 @@ export type TicketRow = {
   createdAt: string;
   createdByName: string;
 };
+
+function truncate(s: string, n: number) {
+  return s.length > n ? `${s.slice(0, n - 1)}…` : s;
+}
+
+function timeLine2(row: TicketRow, now: number): string {
+  const created = Date.parse(row.createdAt);
+  const taken = row.takenAt ? Date.parse(row.takenAt) : created;
+  switch (row.status) {
+    case "SOLVED":
+      return row.solvedAt ? `Resolved in ${formatDuration(Date.parse(row.solvedAt) - created)}` : "";
+    case "TAKEN_UP":
+      return `In progress ${formatDuration(now - taken)}`;
+    case "FORWARDED":
+      return `With ${truncate(row.forwardedTo ?? "—", 16)} ${formatDuration(now - taken)}`;
+    default:
+      return `Raised ${formatDuration(now - created)} ago`;
+  }
+}
 
 export function TicketsTable({ rows, isManager }: { rows: TicketRow[]; isManager: boolean }) {
   const router = useRouter();
@@ -146,6 +166,8 @@ export function TicketsTable({ rows, isManager }: { rows: TicketRow[]; isManager
     setDetailRow(row);
   }
 
+  const now = Date.now();
+
   if (rows.length === 0) {
     return (
       <div className="flex flex-col items-center gap-2 rounded-xl border bg-card py-12 text-center">
@@ -168,6 +190,7 @@ export function TicketsTable({ rows, isManager }: { rows: TicketRow[]; isManager
               <TableHead>Category</TableHead>
               <TableHead>Priority</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead>Time</TableHead>
               <TableHead>Taken by</TableHead>
               <TableHead className="text-right">
                 <span className="sr-only">Actions</span>
@@ -218,6 +241,10 @@ export function TicketsTable({ rows, isManager }: { rows: TicketRow[]; isManager
                     {row.status === "FORWARDED" && row.forwardedTo && (
                       <div className="mt-0.5 text-xs text-muted-foreground">→ {row.forwardedTo}</div>
                     )}
+                  </TableCell>
+                  <TableCell className="text-sm whitespace-nowrap">
+                    <div className="text-muted-foreground">{istStamp(new Date(row.createdAt))}</div>
+                    <div>{timeLine2(row, now)}</div>
                   </TableCell>
                   <TableCell className="text-muted-foreground">{row.takenByName ?? "—"}</TableCell>
                   <TableCell className="text-right">

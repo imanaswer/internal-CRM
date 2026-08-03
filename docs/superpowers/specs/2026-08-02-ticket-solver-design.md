@@ -173,3 +173,46 @@ email ingestion, per-branch dashboards.
   (requireTech; Content-Disposition with original filename).
 - ponytail: DB-stored bytes — move to Supabase Storage if volume grows;
   UI/API contract unchanged.
+
+---
+
+# v3 Addendum — Time Tracking, Resolution Estimates, Manager Activity Feed
+
+**Date:** 2026-08-03 · **Status:** Approved by product owner
+
+## 16. Time everywhere
+
+- Ticket list gains a **Time** column: line 1 = created date+time, always visible
+  (`3 Aug, 12:52 pm`, IST); line 2 = state-relevant duration:
+  OPEN → `Raised <age> ago`; TAKEN_UP → `In progress <since takenAt>`;
+  FORWARDED → `With <forwardedTo> <since latest forward>` (fallback: since
+  takenAt/created); SOLVED → `Resolved in <solvedAt - createdAt>`;
+  DUPLICATE → `Raised <age> ago`.
+- Detail timeline entries additionally show gaps: taken-up line gets
+  `(<takenAt - createdAt> after logging)`; each forward `(<at - previous
+  step>)` optional-simple: gap vs created is acceptable; solved line gets
+  `Resolved in <solvedAt - createdAt>` total.
+- Durations formatted `2d 4h`, `3h 12m`, `41m`, `<1m` (two largest units).
+
+## 17. Similar-issue resolution estimate
+
+- In the detail view: match this ticket's title against SOLVED tickets
+  (significant-word overlap: lowercase words ≥3 chars minus stopwords;
+  overlap ≥2 words, or ≥1 when the source title has <2 significant words).
+- Show: count, average resolution duration (`solvedAt - createdAt`), and up
+  to 3 most recent examples (T-no, title, duration).
+- Computed server-side inside `getTicketDetail`; capped scan (latest 200
+  solved tickets) — ponytail: revisit if volume grows.
+
+## 18. Manager Recent Activity feed
+
+- `/manager` gains a "Recent activity" card: latest 15 events merged from
+  existing data, newest first, IST times + relative age:
+  - activity submitted (employeeName, activity title, createdAt)
+  - ticket created (T-no, title, createdBy)
+  - ticket taken up (takenAt, takenBy)
+  - ticket solved (solvedAt, solvedBy, resolution duration)
+  - ticket forwarded (TicketForward.at, by, to)
+- Ticket events included only when the viewing manager is also tech
+  (`user.tech`); activity events always. Derived at page render; no event
+  table.
