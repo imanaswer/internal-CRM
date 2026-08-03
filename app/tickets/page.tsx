@@ -73,6 +73,7 @@ export default async function TicketsPage({
         solvedBy: { select: { name: true } },
         createdBy: { select: { name: true } },
         forwards: { orderBy: { at: "desc" }, take: 1, select: { at: true } },
+        notes: { orderBy: { at: "desc" }, take: 1, select: { at: true } },
       },
     }),
     prisma.ticket.count({ where: { ...baseWhere, status: "OPEN" } }),
@@ -93,30 +94,42 @@ export default async function TicketsPage({
     return b.createdAt.getTime() - a.createdAt.getTime();
   });
 
-  const rows: TicketRow[] = tickets.map((t) => ({
-    id: t.id,
-    num: t.num,
-    title: t.title,
-    description: t.description,
-    contactName: t.contactName,
-    contactPhone: t.contactPhone,
-    branch: t.branch,
-    source: t.source,
-    ipAddress: t.ipAddress,
-    assetId: t.assetId,
-    priority: t.priority,
-    category: t.category,
-    status: t.status,
-    forwardedTo: t.forwardedTo,
-    forwardedAt: t.forwards[0] ? t.forwards[0].at.toISOString() : null,
-    takenByName: t.takenBy?.name ?? null,
-    takenAt: t.takenAt ? t.takenAt.toISOString() : null,
-    solvedByName: t.solvedBy?.name ?? null,
-    solvedAt: t.solvedAt ? t.solvedAt.toISOString() : null,
-    resolutionNote: t.resolutionNote,
-    createdAt: t.createdAt.toISOString(),
-    createdByName: t.createdBy.name,
-  }));
+  const rows: TicketRow[] = tickets.map((t) => {
+    const fwdAt = t.forwards[0]?.at.getTime();
+    const noteAt = t.notes[0]?.at.getTime();
+    // ponytail: fixed 48h
+    const quietSince =
+      fwdAt !== undefined || noteAt !== undefined
+        ? Math.max(fwdAt ?? 0, noteAt ?? 0)
+        : (t.takenAt ?? t.createdAt).getTime();
+    const needsFollowUp = t.status === "FORWARDED" && quietSince < Date.now() - 48 * 3600_000;
+
+    return {
+      id: t.id,
+      num: t.num,
+      title: t.title,
+      description: t.description,
+      contactName: t.contactName,
+      contactPhone: t.contactPhone,
+      branch: t.branch,
+      source: t.source,
+      ipAddress: t.ipAddress,
+      assetId: t.assetId,
+      priority: t.priority,
+      category: t.category,
+      status: t.status,
+      forwardedTo: t.forwardedTo,
+      forwardedAt: t.forwards[0] ? t.forwards[0].at.toISOString() : null,
+      takenByName: t.takenBy?.name ?? null,
+      takenAt: t.takenAt ? t.takenAt.toISOString() : null,
+      solvedByName: t.solvedBy?.name ?? null,
+      solvedAt: t.solvedAt ? t.solvedAt.toISOString() : null,
+      resolutionNote: t.resolutionNote,
+      createdAt: t.createdAt.toISOString(),
+      createdByName: t.createdBy.name,
+      needsFollowUp,
+    };
+  });
 
   const stats = [
     { label: "Open", value: openCount, valueClass: "text-rose-700" },

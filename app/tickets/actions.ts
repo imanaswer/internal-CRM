@@ -149,6 +149,23 @@ export async function takeBackTicket(id: string): Promise<Result> {
   });
 }
 
+export async function followUpTicket(id: string, note: string): Promise<Result> {
+  const user = await requireTech();
+  const parsed = solveSchema.safeParse({ note });
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0].message };
+  try {
+    const t = await prisma.ticket.findUnique({ where: { id }, select: { status: true } });
+    if (!t) return { ok: false, error: "Ticket not found" };
+    if (!["OPEN", "TAKEN_UP", "FORWARDED"].includes(t.status))
+      return { ok: false, error: "Follow-ups only apply to active tickets" };
+    await prisma.ticketNote.create({ data: { ticketId: id, note: parsed.data.note, byId: user.id } });
+    revalidatePath("/tickets");
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: safeErrorMessage(e) };
+  }
+}
+
 const ALLOWED_MIME = new Set([
   "image/png", "image/jpeg", "image/webp", "image/gif", "application/pdf",
   "application/msword",
@@ -195,6 +212,7 @@ export async function uploadAttachments(ticketId: string, formData: FormData): P
 export type TicketDetail = {
   forwards: { to: string; reason: string; byName: string; at: string }[];
   attachments: { id: string; filename: string; size: number; uploadedByName: string; createdAt: string }[];
+  notes: { note: string; byName: string; at: string }[];
   estimate: { count: number; avgMs: number; examples: { num: number; title: string; ms: number }[] } | null;
 };
 
@@ -209,6 +227,7 @@ export async function getTicketDetail(id: string): Promise<{ ok: true; detail: T
           orderBy: { createdAt: "desc" },
           select: { id: true, filename: true, size: true, createdAt: true, uploadedBy: { select: { name: true } } },
         },
+        notes: { orderBy: { at: "asc" }, include: { by: { select: { name: true } } } },
       },
     });
     if (!t) return { ok: false, error: "Ticket not found" };
@@ -240,6 +259,7 @@ export async function getTicketDetail(id: string): Promise<{ ok: true; detail: T
           id: a.id, filename: a.filename, size: a.size,
           uploadedByName: a.uploadedBy.name, createdAt: a.createdAt.toISOString(),
         })),
+        notes: t.notes.map((n) => ({ note: n.note, byName: n.by.name, at: n.at.toISOString() })),
         estimate,
       },
     };

@@ -68,6 +68,7 @@ export type TicketRow = {
   resolutionNote: string | null;
   createdAt: string;
   createdByName: string;
+  needsFollowUp: boolean; // type-only for now; UI lands in Task 2
 };
 
 function truncate(s: string, n: number) {

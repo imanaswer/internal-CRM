@@ -32,6 +32,7 @@ model User {
   ticketsSolved  Ticket[] @relation("TicketSolver")
   ticketForwards TicketForward[] @relation("ForwardActor")
   ticketAttachments TicketAttachment[] @relation("AttachmentUploader")
+  ticketNotes    TicketNote[] @relation("NoteAuthor")
 }
 
 model Activity {
@@ -123,6 +124,7 @@ model Ticket {
   updatedAt      DateTime       @updatedAt
   forwards       TicketForward[]
   attachments    TicketAttachment[]
+  notes          TicketNote[]
 
   @@index([status, priority])
   @@index([contactPhone])
@@ -136,6 +138,18 @@ model TicketForward {
   reason   String
   byId     String
   by       User     @relation("ForwardActor", fields: [byId], references: [id])
+  at       DateTime @default(now())
+
+  @@index([ticketId])
+}
+
+model TicketNote {
+  id       String   @id @default(cuid())
+  ticketId String
+  ticket   Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  note     String
+  byId     String
+  by       User     @relation("NoteAuthor", fields: [byId], references: [id])
   at       DateTime @default(now())
 
   @@index([ticketId])
