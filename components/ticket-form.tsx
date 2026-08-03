@@ -73,19 +73,24 @@ export function TicketForm({ action, onSuccess }: Props) {
       return;
     }
 
+    let uploadFailed = false;
     if (files.length > 0) {
       const fd = new FormData();
       for (const f of files) fd.append("files", f);
       try {
         const uploadResult = await uploadAttachments(result.id, fd);
-        if (!uploadResult.ok) toast.error(`Ticket created; attachment failed: ${uploadResult.error}`);
+        if (!uploadResult.ok) {
+          uploadFailed = true;
+          toast.error(`Ticket created, but attachment failed: ${uploadResult.error}`);
+        }
       } catch {
-        toast.error("Ticket created; attachment upload failed — your session may have expired.");
+        uploadFailed = true;
+        toast.error("Ticket created, but attachment upload failed — your session may have expired.");
       }
     }
     setPending(false);
 
-    toast.success("Ticket created");
+    if (!uploadFailed) toast.success("Ticket created");
     formEl.reset();
     setSource("PHONE");
     setPriority("MEDIUM");
