@@ -77,6 +77,7 @@ export async function solveTicket(id: string, note: string): Promise<Result> {
     solvedById: user.id,
     solvedAt: new Date(),
     resolutionNote: parsed.data.note,
+    forwardedTo: null, // the trail keeps the history; the cache is only for live FORWARDED rows
   });
 }
 
@@ -169,18 +170,20 @@ export async function uploadAttachments(ticketId: string, formData: FormData): P
       if (f.size > MAX_FILE) return { ok: false, error: `${f.name} is over 5 MB` };
       if (!ALLOWED_MIME.has(f.type)) return { ok: false, error: `${f.name}: file type not allowed` };
     }
+    const payloads = [];
     for (const f of files) {
-      await prisma.ticketAttachment.create({
-        data: {
-          ticketId,
-          filename: f.name,
-          mimeType: f.type,
-          size: f.size,
-          data: Buffer.from(await f.arrayBuffer()),
-          uploadedById: user.id,
-        },
+      payloads.push({
+        ticketId,
+        filename: f.name,
+        mimeType: f.type,
+        size: f.size,
+        data: Buffer.from(await f.arrayBuffer()),
+        uploadedById: user.id,
       });
     }
+    // All-or-nothing: a mid-batch failure must not leave half the files
+    // saved, or a retry would duplicate them.
+    await prisma.$transaction(payloads.map((data) => prisma.ticketAttachment.create({ data })));
     revalidatePath("/tickets");
     return { ok: true };
   } catch (e) {
