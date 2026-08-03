@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { requireTech } from "@/lib/session";
 import { ticketSchema, solveSchema, forwardSchema, type TicketInput } from "@/lib/validation";
 import { safeErrorMessage } from "@/lib/errors";
+import { titlesSimilar } from "@/lib/duration";
 
 type Result = { ok: true } | { ok: false; error: string };
 
@@ -194,6 +195,7 @@ export async function uploadAttachments(ticketId: string, formData: FormData): P
 export type TicketDetail = {
   forwards: { to: string; reason: string; byName: string; at: string }[];
   attachments: { id: string; filename: string; size: number; uploadedByName: string; createdAt: string }[];
+  estimate: { count: number; avgMs: number; examples: { num: number; title: string; ms: number }[] } | null;
 };
 
 export async function getTicketDetail(id: string): Promise<{ ok: true; detail: TicketDetail } | { ok: false; error: string }> {
@@ -210,6 +212,26 @@ export async function getTicketDetail(id: string): Promise<{ ok: true; detail: T
       },
     });
     if (!t) return { ok: false, error: "Ticket not found" };
+
+    // ponytail: 200-row scan + word overlap; revisit with real volume
+    const solved = await prisma.ticket.findMany({
+      where: { status: "SOLVED", id: { not: id } },
+      orderBy: { solvedAt: "desc" },
+      take: 200,
+      select: { num: true, title: true, createdAt: true, solvedAt: true },
+    });
+    const matches = solved
+      .filter((c) => c.solvedAt && titlesSimilar(t.title, c.title))
+      .map((c) => ({ num: c.num, title: c.title, ms: c.solvedAt!.getTime() - c.createdAt.getTime() }));
+    const estimate =
+      matches.length === 0
+        ? null
+        : {
+            count: matches.length,
+            avgMs: matches.reduce((sum, m) => sum + m.ms, 0) / matches.length,
+            examples: matches.slice(0, 3),
+          };
+
     return {
       ok: true,
       detail: {
@@ -218,6 +240,7 @@ export async function getTicketDetail(id: string): Promise<{ ok: true; detail: T
           id: a.id, filename: a.filename, size: a.size,
           uploadedByName: a.uploadedBy.name, createdAt: a.createdAt.toISOString(),
         })),
+        estimate,
       },
     };
   } catch (e) {

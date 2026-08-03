@@ -11,6 +11,7 @@ import {
   TicketSourceBadge,
 } from "@/components/ticket-badges";
 import { ticketNo } from "@/lib/whatsapp";
+import { formatDuration } from "@/lib/duration";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -25,6 +26,8 @@ const fmtDate = (iso: string) =>
     hour: "numeric",
     minute: "2-digit",
   });
+
+const truncateTitle = (s: string) => (s.length > 40 ? `${s.slice(0, 39)}…` : s);
 
 const fmtSize = (bytes: number) =>
   bytes >= 1024 * 1024 ? `${(bytes / (1024 * 1024)).toFixed(1)}MB` : `${Math.max(1, Math.ceil(bytes / 1024))}KB`;
@@ -154,22 +157,42 @@ export function TicketDetailDialog({
                   </li>
                   {row.takenAt && (
                     <li>
-                      Taken up by {row.takenByName} · {fmtDate(row.takenAt)}
+                      Taken up by {row.takenByName} · {fmtDate(row.takenAt)} (
+                      {formatDuration(Date.parse(row.takenAt) - Date.parse(row.createdAt))} after logging)
                     </li>
                   )}
                   {[...detail.forwards].reverse().map((f, i) => (
                     <li key={i}>
-                      Forwarded to {f.to} by {f.byName} · {fmtDate(f.at)} — {f.reason}
+                      Forwarded to {f.to} by {f.byName} · {fmtDate(f.at)} — {f.reason} (
+                      {formatDuration(Date.parse(f.at) - Date.parse(row.createdAt))} after logging)
                     </li>
                   ))}
                   {row.solvedAt && (
                     <li>
-                      Solved by {row.solvedByName} · {fmtDate(row.solvedAt)} — {row.resolutionNote}
+                      Solved by {row.solvedByName} · {fmtDate(row.solvedAt)} — {row.resolutionNote} — resolved in{" "}
+                      {formatDuration(Date.parse(row.solvedAt) - Date.parse(row.createdAt))}
                     </li>
                   )}
                 </ul>
               )}
             </div>
+
+            {detail?.estimate && (
+              <div>
+                <div className="mb-1.5 text-sm font-medium">Similar issues</div>
+                <p className="text-sm text-muted-foreground">
+                  {detail.estimate.count} solved before · typically resolved in ~
+                  {formatDuration(detail.estimate.avgMs)}
+                </p>
+                <ul className="mt-1 space-y-1 text-sm">
+                  {detail.estimate.examples.map((ex) => (
+                    <li key={ex.num}>
+                      {ticketNo(ex.num)} “{truncateTitle(ex.title)}” — {formatDuration(ex.ms)}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
             <div>
               <div className="mb-1.5 text-sm font-medium">Attachments</div>
