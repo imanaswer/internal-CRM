@@ -60,6 +60,7 @@ export type TicketRow = {
   category: TicketCategory;
   status: TicketStatus;
   forwardedTo: string | null;
+  forwardedAt: string | null;
   takenByName: string | null;
   takenAt: string | null;
   solvedByName: string | null;
@@ -81,8 +82,10 @@ function timeLine2(row: TicketRow, now: number): string {
       return row.solvedAt ? `Resolved in ${formatDuration(Date.parse(row.solvedAt) - created)}` : "";
     case "TAKEN_UP":
       return `In progress ${formatDuration(now - taken)}`;
-    case "FORWARDED":
-      return `With ${truncate(row.forwardedTo ?? "—", 16)} ${formatDuration(now - taken)}`;
+    case "FORWARDED": {
+      const since = row.forwardedAt ? Date.parse(row.forwardedAt) : taken;
+      return `With ${truncate(row.forwardedTo ?? "—", 16)} ${formatDuration(now - since)}`;
+    }
     default:
       return `Raised ${formatDuration(now - created)} ago`;
   }

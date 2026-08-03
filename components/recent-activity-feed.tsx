@@ -1,4 +1,4 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ChevronDown } from "lucide-react";
 import { formatDuration, istStamp } from "@/lib/duration";
 
 export function RecentActivityFeed({
@@ -7,13 +7,20 @@ export function RecentActivityFeed({
   events: { at: string; text: string }[];
 }) {
   return (
-    <Card className="gap-1 py-4">
-      <CardHeader className="pb-0">
-        <CardTitle className="text-[13px] font-medium text-muted-foreground">
+    <details className="group rounded-xl border bg-card">
+      <summary className="flex cursor-pointer items-center justify-between gap-2 px-6 py-4 text-sm font-medium select-none [&::-webkit-details-marker]:hidden">
+        <span className="flex items-center gap-2">
           Recent activity
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
+          <span className="rounded-full bg-accent px-2 py-0.5 text-[11px] font-semibold text-accent-foreground">
+            {events.length}
+          </span>
+        </span>
+        <span className="flex items-center gap-1.5 text-xs font-normal text-muted-foreground">
+          {events[0] ? `Latest: ${istStamp(new Date(events[0].at))}` : "No events yet"}
+          <ChevronDown className="size-4 transition-transform group-open:rotate-180" aria-hidden />
+        </span>
+      </summary>
+      <div className="border-t px-6 py-4">
         {events.length === 0 ? (
           <p className="text-sm text-muted-foreground">Nothing yet.</p>
         ) : (
@@ -34,7 +41,7 @@ export function RecentActivityFeed({
             ))}
           </ul>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </details>
   );
 }
