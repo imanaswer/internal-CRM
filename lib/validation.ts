@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { isFutureISO } from "./dates";
+import { normalizePhone } from "./whatsapp";
 
 const iso = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date");
 
@@ -33,3 +34,24 @@ export const lockSchema = z
   });
 
 export type LockInput = z.infer<typeof lockSchema>;
+
+export const ticketSchema = z.object({
+  title: z.string().trim().min(3, "Title must be at least 3 characters"),
+  description: z.string().trim().optional(),
+  contactName: z.string().trim().min(1, "Contact name is required"),
+  contactPhone: z
+    .string()
+    .trim()
+    .refine((p) => normalizePhone(p) !== null, "Enter a valid phone number"),
+  branch: z.string().trim().optional(),
+  source: z.enum(["PHONE", "WHATSAPP", "EMAIL", "WALK_IN", "OTHER"]),
+  priority: z.enum(["LOW", "MEDIUM", "HIGH", "URGENT"]),
+  ipAddress: z.string().trim().optional(),
+  assetId: z.string().trim().optional(),
+});
+
+export type TicketInput = z.infer<typeof ticketSchema>;
+
+export const solveSchema = z.object({
+  note: z.string().trim().min(3, "Describe the resolution (3+ characters)"),
+});
