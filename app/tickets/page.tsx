@@ -11,7 +11,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 
-const STATUS_ORDER: Record<TicketStatus, number> = { OPEN: 0, TAKEN_UP: 1, SOLVED: 2, DUPLICATE: 3 };
+// FORWARDED added for v2 (required to keep tsc clean against the widened enum); Task 3 revisits ordering/UI.
+const STATUS_ORDER: Record<TicketStatus, number> = { OPEN: 0, TAKEN_UP: 1, FORWARDED: 2, SOLVED: 3, DUPLICATE: 4 };
 const PRIORITY_ORDER: Record<TicketPriority, number> = { URGENT: 0, HIGH: 1, MEDIUM: 2, LOW: 3 };
 
 // Native select styled to match the shadcn Input for a consistent filter bar.

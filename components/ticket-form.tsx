@@ -43,6 +43,7 @@ export function TicketForm({ action, onSuccess }: Props) {
       priority,
       ipAddress: String(form.get("ipAddress") ?? "") || undefined,
       assetId: String(form.get("assetId") ?? "") || undefined,
+      category: "TECH", // v2 Task 3 adds the real select
     };
 
     setPending(true);

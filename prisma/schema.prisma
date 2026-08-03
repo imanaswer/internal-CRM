@@ -30,6 +30,8 @@ model User {
   ticketsCreated Ticket[] @relation("TicketCreator")
   ticketsTaken   Ticket[] @relation("TicketTaker")
   ticketsSolved  Ticket[] @relation("TicketSolver")
+  ticketForwards TicketForward[] @relation("ForwardActor")
+  ticketAttachments TicketAttachment[] @relation("AttachmentUploader")
 }
 
 model Activity {
@@ -85,6 +87,12 @@ enum TicketStatus {
   TAKEN_UP
   SOLVED
   DUPLICATE
+  FORWARDED
+}
+
+enum TicketCategory {
+  TECH
+  NON_TECH
 }
 
 model Ticket {
@@ -100,6 +108,8 @@ model Ticket {
   assetId        String?
   priority       TicketPriority @default(MEDIUM)
   status         TicketStatus   @default(OPEN)
+  category       TicketCategory @default(TECH)
+  forwardedTo    String?
   createdById    String
   createdBy      User           @relation("TicketCreator", fields: [createdById], references: [id])
   takenById      String?
@@ -111,7 +121,37 @@ model Ticket {
   resolutionNote String?
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
+  forwards       TicketForward[]
+  attachments    TicketAttachment[]
 
   @@index([status, priority])
   @@index([contactPhone])
+}
+
+model TicketForward {
+  id       String   @id @default(cuid())
+  ticketId String
+  ticket   Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  to       String
+  reason   String
+  byId     String
+  by       User     @relation("ForwardActor", fields: [byId], references: [id])
+  at       DateTime @default(now())
+
+  @@index([ticketId])
+}
+
+model TicketAttachment {
+  id           String   @id @default(cuid())
+  ticketId     String
+  ticket       Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  filename     String
+  mimeType     String
+  size         Int
+  data         Bytes
+  uploadedById String
+  uploadedBy   User     @relation("AttachmentUploader", fields: [uploadedById], references: [id])
+  createdAt    DateTime @default(now())
+
+  @@index([ticketId])
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { activitySchema, lockSchema, ticketSchema, solveSchema } from "./validation";
+import { activitySchema, lockSchema, ticketSchema, solveSchema, forwardSchema } from "./validation";
 
 const base = {
   date: "2026-07-01", activity: "Fixed bug", assignedBy: "Lead",
@@ -42,6 +42,7 @@ const ticketBase = {
   contactPhone: "9876543210",
   source: "PHONE",
   priority: "HIGH",
+  category: "TECH",
 };
 
 describe("ticketSchema", () => {
@@ -59,11 +60,35 @@ describe("ticketSchema", () => {
       ticketSchema.safeParse({ ...ticketBase, ipAddress: "10.0.0.4", assetId: "SRV-02", branch: "Kochi" }).success
     ).toBe(true);
   });
+  it("accepts category TECH and NON_TECH", () => {
+    expect(ticketSchema.safeParse({ ...ticketBase, category: "TECH" }).success).toBe(true);
+    expect(ticketSchema.safeParse({ ...ticketBase, category: "NON_TECH" }).success).toBe(true);
+  });
+  it("rejects unknown category", () => {
+    expect(ticketSchema.safeParse({ ...ticketBase, category: "OTHER" }).success).toBe(false);
+  });
 });
 
 describe("solveSchema", () => {
   it("requires a note of 3+ chars", () => {
     expect(solveSchema.safeParse({ note: "ok" }).success).toBe(false);
     expect(solveSchema.safeParse({ note: "Restarted router" }).success).toBe(true);
+  });
+});
+
+describe("forwardSchema", () => {
+  it("accepts a valid forward", () => {
+    expect(
+      forwardSchema.safeParse({ to: "Server team", reason: "Needs rack access" }).success
+    ).toBe(true);
+  });
+  it("rejects short to and short reason", () => {
+    expect(forwardSchema.safeParse({ to: "X", reason: "ab" }).success).toBe(false);
+  });
+  it("rejects short to alone", () => {
+    expect(forwardSchema.safeParse({ to: "X", reason: "Needs rack access" }).success).toBe(false);
+  });
+  it("rejects short reason alone", () => {
+    expect(forwardSchema.safeParse({ to: "Server team", reason: "ab" }).success).toBe(false);
   });
 });

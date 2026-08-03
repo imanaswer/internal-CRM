@@ -2,7 +2,7 @@ import { cn } from "@/lib/utils";
 
 export const TICKET_SOURCES = ["PHONE", "WHATSAPP", "EMAIL", "WALK_IN", "OTHER"] as const;
 export const TICKET_PRIORITIES = ["LOW", "MEDIUM", "HIGH", "URGENT"] as const;
-export const TICKET_STATUSES = ["OPEN", "TAKEN_UP", "SOLVED", "DUPLICATE"] as const;
+export const TICKET_STATUSES = ["OPEN", "TAKEN_UP", "SOLVED", "DUPLICATE", "FORWARDED"] as const;
 export type TicketSource = (typeof TICKET_SOURCES)[number];
 export type TicketPriority = (typeof TICKET_PRIORITIES)[number];
 export type TicketStatus = (typeof TICKET_STATUSES)[number];
@@ -16,6 +16,8 @@ const STATUS: Record<TicketStatus, string> = {
   TAKEN_UP: "bg-sky-50 text-sky-800 ring-sky-600/20",
   SOLVED: "bg-emerald-50 text-emerald-800 ring-emerald-600/20",
   DUPLICATE: "bg-slate-100 text-slate-600 ring-slate-500/20",
+  // required now so tsc stays clean against the widened Prisma enum; Task 3 wires up the actual FORWARDED UI (badge usage, → forwardedTo, forward dialog).
+  FORWARDED: "bg-violet-50 text-violet-800 ring-violet-600/20",
 };
 const PRIORITY: Record<TicketPriority, string> = {
   LOW: "bg-slate-100 text-slate-600 ring-slate-500/20",

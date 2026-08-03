@@ -48,6 +48,7 @@ export const ticketSchema = z.object({
   priority: z.enum(["LOW", "MEDIUM", "HIGH", "URGENT"]),
   ipAddress: z.string().trim().optional(),
   assetId: z.string().trim().optional(),
+  category: z.enum(["TECH", "NON_TECH"]),
 });
 
 export type TicketInput = z.infer<typeof ticketSchema>;
@@ -55,3 +56,10 @@ export type TicketInput = z.infer<typeof ticketSchema>;
 export const solveSchema = z.object({
   note: z.string().trim().min(3, "Describe the resolution (3+ characters)"),
 });
+
+export const forwardSchema = z.object({
+  to: z.string().trim().min(2, "Say who it was forwarded to"),
+  reason: z.string().trim().min(3, "Give the reason for forwarding"),
+});
+
+export type ForwardInput = z.infer<typeof forwardSchema>;
