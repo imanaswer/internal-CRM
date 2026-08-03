@@ -40,11 +40,14 @@ async function transition(
   data: Record<string, unknown>
 ): Promise<Result> {
   try {
-    const existing = await prisma.ticket.findUnique({ where: { id } });
-    if (!existing) return { ok: false, error: "Ticket not found" };
-    if (!allowedFrom.includes(existing.status))
-      return { ok: false, error: `Not allowed from status ${existing.status}` };
-    await prisma.ticket.update({ where: { id }, data });
+    // Atomic guard: status check and update in one query, so two techs
+    // acting on the same ticket can't both win the race.
+    const r = await prisma.ticket.updateMany({
+      where: { id, status: { in: allowedFrom } },
+      data,
+    });
+    if (r.count === 0)
+      return { ok: false, error: "Ticket not found or its status just changed — refresh." };
     revalidatePath("/tickets");
     return { ok: true };
   } catch (e) {

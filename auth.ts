@@ -94,10 +94,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             token.role = db.role;
             token.designation = db.designation;
             token.name = db.name;
-            token.tech = resolveTech(db.email, process.env.TECH_EMAILS ?? "");
           }
         }
       }
+      // Re-resolved every request (env-only, no DB) so removing someone from
+      // TECH_EMAILS revokes ticket access immediately, not at next sign-in.
+      token.tech = resolveTech((token.email as string) ?? "", process.env.TECH_EMAILS ?? "");
       return token;
     },
     async session({ session, token }) {
